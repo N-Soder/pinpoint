@@ -1,16 +1,11 @@
-const AUTH_KEY = 'pinpoint_auth';
+// The admin session lives in an HttpOnly cookie set by the API, which the
+// browser sends with these same-origin requests. Nothing is stored here.
 
-function getToken(): string | null {
-  return localStorage.getItem(AUTH_KEY);
-}
+let onUnauthorized: (() => void) | null = null;
 
-export function hasToken(): boolean {
-  return !!getToken();
-}
-
-function authHeaders(): Record<string, string> {
-  const token = getToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+/** Register a callback for when the API rejects the session (expired, or the password was rotated). */
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  onUnauthorized = handler;
 }
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -18,15 +13,10 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      ...authHeaders(),
       ...(options.headers ?? {}),
     },
   });
-  if (res.status === 401 && getToken()) {
-    // Stored password is no longer valid (e.g. rotated) — drop it and show the login gate.
-    clearToken();
-    window.location.reload();
-  }
+  if (res.status === 401) onUnauthorized?.();
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
@@ -66,6 +56,7 @@ export interface Pin {
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
+/** Sign in. On success the API sets the session cookie. */
 export async function verifyPassword(password: string): Promise<boolean> {
   const res = await fetch('/api/auth/verify', {
     method: 'POST',
@@ -75,12 +66,28 @@ export async function verifyPassword(password: string): Promise<boolean> {
   return res.ok;
 }
 
-export function storeToken(password: string): void {
-  localStorage.setItem(AUTH_KEY, password);
+export async function checkSession(): Promise<boolean> {
+  try {
+    const res = await fetch('/api/auth/session');
+    if (!res.ok) return false;
+    const data = (await res.json()) as { authenticated?: boolean };
+    return data.authenticated === true;
+  } catch {
+    return false;
+  }
 }
 
-export function clearToken(): void {
-  localStorage.removeItem(AUTH_KEY);
+export async function signOut(): Promise<void> {
+  await fetch('/api/auth/session', { method: 'DELETE' });
+}
+
+/** Earlier versions kept the admin password in localStorage; remove any leftover copy. */
+export function clearLegacyToken(): void {
+  try {
+    localStorage.removeItem('pinpoint_auth');
+  } catch {
+    // Storage can be unavailable (private mode, blocked site data).
+  }
 }
 
 // ── Projects ─────────────────────────────────────────────────────────────────

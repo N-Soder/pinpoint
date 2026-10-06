@@ -79,9 +79,9 @@ The widget does nothing unless the page URL contains `review=` and the script `s
 
 Read this before you deploy:
 
-- **The admin dashboard** uses a single shared password, checked server-side against `ADMIN_PASSWORD`. The browser keeps the password in `localStorage` and sends it as a bearer token. Use a unique, long random password.
+- **The admin dashboard** uses a single shared password, checked server-side against `ADMIN_PASSWORD`. Signing in sets a signed session cookie that lasts 7 days. The cookie is `HttpOnly`, so page scripts cannot read it, and the password itself is never stored in the browser. Sessions are stateless: signing out clears the cookie, and changing `ADMIN_PASSWORD` ends every session. The session key is derived from the password, so use a unique, long random password.
 - **Widget endpoints are anonymous by design.** Anyone who knows a project ID can list that project's pins (comments, author names and screenshots), add pins, and mark pins resolved or open. The project ID is in the embed snippet, so **anyone who can see your site's HTML can read its feedback.** Only embed the widget where that is acceptable, for example on staging sites, or add the snippet only for reviewers. Each pin stores the page URL including its query string and `#fragment` (only `review=` is removed). Don't leave feedback on pages whose URL contains tokens, such as password-reset or magic links.
-- Listing projects, creating projects and deleting anything require the admin password.
+- Listing projects, creating projects and deleting anything require an admin session. Admin requests that name a different origin are refused.
 
 See [SECURITY.md](SECURITY.md) to report a vulnerability.
 

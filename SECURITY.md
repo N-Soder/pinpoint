@@ -19,7 +19,7 @@ We aim to acknowledge reports within a week. This is a small volunteer project, 
 The following are intentional trade-offs, documented in the README. They are not vulnerabilities in themselves:
 
 - Widget endpoints (`GET /api/pins`, `POST /api/pins`, `PATCH /api/pins/:id`) need no authentication. A project ID gives read and write access to that project's pins.
-- The admin dashboard uses a single shared password, and the browser stores it in `localStorage`.
+- The admin dashboard uses a single shared password. Sessions are stateless signed cookies, so one cannot be revoked on its own before it expires; changing the password ends them all.
 - The app has no built-in rate limiting. Operators should configure Cloudflare rate limiting rules.
 
-Reports showing how to bypass these boundaries are welcome. Examples include reaching admin-only endpoints without the password, or injecting script into the dashboard.
+Reports showing how to bypass these boundaries are welcome. Examples include reaching admin-only endpoints without a valid session, or injecting script into the dashboard.

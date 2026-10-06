@@ -1,41 +1,28 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  clearToken, createProject, deletePin, deleteProject, fetchPins,
-  fetchProjects, fetchProjectsWithCounts, hasToken, patchPin, storeToken, verifyPassword,
+  checkSession, clearLegacyToken, createProject, deletePin, deleteProject, fetchPins,
+  fetchProjects, fetchProjectsWithCounts, patchPin, setUnauthorizedHandler, signOut, verifyPassword,
 } from './api';
 
 const fetchMock = vi.fn<typeof fetch>();
-const reload = vi.fn();
-
-// Tests run in node, so stand in for the two browser globals the client touches.
-function memoryStorage(): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> {
-  const items = new Map<string, string>();
-  return {
-    getItem: (key) => items.get(key) ?? null,
-    setItem: (key, value) => void items.set(key, String(value)),
-    removeItem: (key) => void items.delete(key),
-  };
-}
 
 beforeEach(() => {
-  vi.stubGlobal('localStorage', memoryStorage());
-  vi.stubGlobal('window', { location: { reload } });
   vi.stubGlobal('fetch', fetchMock);
   fetchMock.mockReset();
-  reload.mockReset();
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  setUnauthorizedHandler(null);
+});
 
 describe('dashboard API client', () => {
-  it('verifies passwords without attaching a stored admin token', async () => {
-    storeToken('old-password');
-    fetchMock.mockResolvedValue(new Response('{}'));
-    expect(await verifyPassword('new-password')).toBe(true);
+  it('signs in by posting the password', async () => {
+    fetchMock.mockResolvedValue(new Response('{"ok":true}'));
+    expect(await verifyPassword('secret')).toBe(true);
     const [url, options] = fetchMock.mock.calls[0];
     expect(url).toBe('/api/auth/verify');
     expect(options?.method).toBe('POST');
-    expect(JSON.parse(options?.body as string)).toEqual({ password: 'new-password' });
-    expect(options?.headers).not.toHaveProperty('Authorization');
+    expect(JSON.parse(options?.body as string)).toEqual({ password: 'secret' });
   });
 
   it('returns false when password verification is rejected', async () => {
@@ -43,14 +30,48 @@ describe('dashboard API client', () => {
     expect(await verifyPassword('wrong')).toBe(false);
   });
 
-  it('uses the current stored token and stops sending it after logout', async () => {
+  it('never sends an Authorization header; the session is a cookie', async () => {
     fetchMock.mockImplementation(async () => new Response(JSON.stringify({ projects: [] })));
-    storeToken('test-token');
     await fetchProjects();
-    expect(fetchMock.mock.calls[0][1]?.headers).toMatchObject({ Authorization: 'Bearer test-token' });
-    clearToken();
-    await fetchProjects();
-    expect(fetchMock.mock.calls[1][1]?.headers).not.toHaveProperty('Authorization');
+    expect(fetchMock.mock.calls[0][1]?.headers).not.toHaveProperty('Authorization');
+  });
+
+  it.each([
+    [{ authenticated: true }, 200, true],
+    [{ authenticated: false }, 200, false],
+    [{}, 200, false],
+    [{ authenticated: true }, 500, false],
+  ])('checkSession maps %j (HTTP %i) to %s', async (body, status, expected) => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify(body), { status }));
+    expect(await checkSession()).toBe(expected);
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/auth/session');
+  });
+
+  it('checkSession treats a network failure as signed out', async () => {
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+    expect(await checkSession()).toBe(false);
+  });
+
+  it('signs out by deleting the session', async () => {
+    fetchMock.mockResolvedValue(new Response('{"ok":true}'));
+    await signOut();
+    expect(fetchMock.mock.calls[0]).toEqual(['/api/auth/session', { method: 'DELETE' }]);
+  });
+
+  it('removes a password left in localStorage by earlier versions', () => {
+    const removeItem = vi.fn();
+    vi.stubGlobal('localStorage', { removeItem });
+    clearLegacyToken();
+    expect(removeItem).toHaveBeenCalledWith('pinpoint_auth');
+  });
+
+  it('tolerates storage being unavailable', () => {
+    vi.stubGlobal('localStorage', {
+      removeItem: () => {
+        throw new Error('blocked');
+      },
+    });
+    expect(() => clearLegacyToken()).not.toThrow();
   });
 
   it('unwraps projects with open pin counts', async () => {
@@ -93,17 +114,24 @@ describe('dashboard API client', () => {
   });
 
   it('reports API error messages', async () => {
-    fetchMock.mockResolvedValue(new Response('{"error":"Unauthorized"}', { status: 401 }));
-    await expect(fetchProjects()).rejects.toThrow('Unauthorized');
-    expect(reload).not.toHaveBeenCalled();
+    fetchMock.mockResolvedValue(new Response('{"error":"Project already exists"}', { status: 409 }));
+    await expect(fetchProjects()).rejects.toThrow('Project already exists');
   });
 
-  it('drops a rejected stored token and reloads to show the login gate', async () => {
-    storeToken('stale-token');
+  it('calls the unauthorized handler when the session is rejected', async () => {
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
     fetchMock.mockResolvedValue(new Response('{"error":"Unauthorized"}', { status: 401 }));
     await expect(fetchProjects()).rejects.toThrow('Unauthorized');
-    expect(hasToken()).toBe(false);
-    expect(reload).toHaveBeenCalledOnce();
+    expect(handler).toHaveBeenCalledOnce();
+  });
+
+  it('does not call the unauthorized handler for other errors', async () => {
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
+    fetchMock.mockResolvedValue(new Response('{"error":"Database error"}', { status: 500 }));
+    await expect(fetchProjects()).rejects.toThrow('Database error');
+    expect(handler).not.toHaveBeenCalled();
   });
 
   it('reports the HTTP status when an error response is not JSON', async () => {

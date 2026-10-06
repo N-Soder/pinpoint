@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { onRequestGet as listProjects, onRequestPost as createProject } from '../../functions/api/projects/index.js';
 import { onRequestDelete as deleteProject } from '../../functions/api/projects/[id].js';
-import { ADMIN_PASSWORD, PROJECT_ID, call, makeEnv, seedProject, uuid, validPin } from './helpers.js';
+import { ADMIN_TOKEN, PROJECT_ID, call, makeEnv, seedProject, uuid, validPin } from './helpers.js';
 
 let env;
 beforeEach(() => {
   env = makeEnv();
 });
 
-const admin = { token: ADMIN_PASSWORD };
+const admin = { token: ADMIN_TOKEN };
 const EMPTY_ID = uuid(2);
 
 describe('GET /api/projects', () => {

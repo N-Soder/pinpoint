@@ -1,9 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
+import { createSession, SESSION_COOKIE } from '../../functions/api/_auth.js';
 
 const SCHEMA = readFileSync(new URL('../../db/schema.sql', import.meta.url), 'utf8');
 
 export const ADMIN_PASSWORD = 'test-admin-password';
+/** A valid admin session token for ADMIN_PASSWORD. */
+export const ADMIN_TOKEN = (await createSession({ ADMIN_PASSWORD })).token;
 
 /** Deterministic UUIDs — the API only accepts UUID ids. */
 export const uuid = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -49,11 +52,13 @@ export async function call(handler, {
   body,
   rawBody,
   token,
+  origin,
   params = {},
   waitUntil = () => {},
 } = {}) {
   const headers = { 'Content-Type': 'application/json' };
-  if (token) headers.Authorization = `Bearer ${token}`;
+  if (token) headers.Cookie = `${SESSION_COOKIE}=${token}`;
+  if (origin) headers.Origin = origin;
   const request = new Request(`https://pinpoint.test${path}`, {
     method,
     headers,

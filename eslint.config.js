@@ -24,6 +24,13 @@ export default tseslint.config(
     },
   },
   {
+    // shadcn/ui files export variant helpers alongside their components by design
+    files: ["src/components/ui/**/*.{ts,tsx}"],
+    rules: {
+      "react-refresh/only-export-components": "off",
+    },
+  },
+  {
     // Cloudflare Pages Functions (Workers runtime)
     extends: [js.configs.recommended],
     files: ["functions/**/*.js"],

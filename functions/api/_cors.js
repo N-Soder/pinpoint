@@ -8,10 +8,10 @@ export function corsOptions() {
   return new Response(null, { status: 204, headers: CORS });
 }
 
-export function json(data, status = 200) {
+export function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json', ...CORS },
+    headers: { 'Content-Type': 'application/json', ...CORS, ...headers },
   });
 }
 

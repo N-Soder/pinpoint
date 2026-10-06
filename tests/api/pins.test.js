@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { onRequestGet as listPins, onRequestPost as createPin } from '../../functions/api/pins/index.js';
 import { onRequestPatch as patchPin, onRequestDelete as deletePin } from '../../functions/api/pins/[id].js';
 import { onRequestOptions } from '../../functions/api/pins/index.js';
-import { ADMIN_PASSWORD, PIN_ID, PROJECT_ID, call, makeEnv, seedProject, uuid, validPin } from './helpers.js';
+import { ADMIN_TOKEN, PIN_ID, PROJECT_ID, call, makeEnv, seedProject, uuid, validPin } from './helpers.js';
 
 let env;
 beforeEach(() => {
@@ -192,13 +192,13 @@ describe('DELETE /api/pins/:id', () => {
 
   it('deletes a pin', async () => {
     await post(validPin());
-    const res = await call(deletePin, { env, method: 'DELETE', params: { id: PIN_ID }, token: ADMIN_PASSWORD });
+    const res = await call(deletePin, { env, method: 'DELETE', params: { id: PIN_ID }, token: ADMIN_TOKEN });
     expect(res.status).toBe(200);
     expect(env.DB.raw.prepare('SELECT COUNT(*) AS n FROM pins').get().n).toBe(0);
   });
 
   it('returns 404 for an unknown pin', async () => {
-    const res = await call(deletePin, { env, method: 'DELETE', params: { id: uuid(404) }, token: ADMIN_PASSWORD });
+    const res = await call(deletePin, { env, method: 'DELETE', params: { id: uuid(404) }, token: ADMIN_TOKEN });
     expect(res.status).toBe(404);
   });
 });
