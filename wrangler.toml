@@ -1,0 +1,20 @@
+name = "pinpoint-web-feedback"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "./dist"
+
+# D1 database binding.
+# If you are deploying your own copy, create a database and replace
+# database_id with the ID printed by:
+#   npx wrangler d1 create pinpoint-db
+# Then apply the schema:
+#   npm run db:migrate:local    # local dev database
+#   npm run db:migrate:remote   # production database
+[[d1_databases]]
+binding = "DB"
+database_name = "pinpoint-db"
+database_id = "0050765b-2f73-4205-85bc-d424f7d0f20c"
+
+# Secrets are never stored in this file. Set them with:
+#   npx wrangler pages secret put ADMIN_PASSWORD
+#   npx wrangler pages secret put NTFY_TOPIC      # optional
+# For local development, copy .dev.vars.example to .dev.vars.

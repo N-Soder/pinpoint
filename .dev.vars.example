@@ -1,0 +1,12 @@
+# Local secrets for `wrangler pages dev` (npm run dev:cf).
+# Copy to .dev.vars (git-ignored) and fill in. In production set these as
+# Cloudflare Pages secrets instead, e.g.:
+#   npx wrangler pages secret put ADMIN_PASSWORD
+#
+# Admin dashboard password. Use a long, random value.
+ADMIN_PASSWORD=change-me-to-a-long-random-string
+
+# Optional: ntfy.sh topic for push notifications when a pin is created.
+# ntfy topics are public to anyone who knows the name — treat it like a
+# password (long and random) and note that comments are sent in the clear.
+# NTFY_TOPIC=

@@ -1,0 +1,28 @@
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react-swc";
+import path from "path";
+
+export default defineConfig({
+  server: {
+    host: "::",
+    port: 8080,
+    hmr: {
+      overlay: false,
+    },
+    // In plain `vite dev`, proxy /api/* to a locally running wrangler dev server.
+    // For full-stack local dev run: npm run build && npm run dev:cf
+    proxy: {
+      "/api": {
+        target: "http://localhost:8787",
+        changeOrigin: true,
+      },
+    },
+  },
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+    dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
+  },
+});
