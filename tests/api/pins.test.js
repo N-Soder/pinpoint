@@ -15,7 +15,7 @@ describe('POST /api/pins', () => {
   it('creates a pin with defaults and a boolean resolved', async () => {
     const res = await post(validPin());
     expect(res.status).toBe(201);
-    expect(res.data.pin).toMatchObject({ ...validPin(), resolved: false, author: null, element_screenshot: null });
+    expect(res.data.pin).toMatchObject({ ...validPin(), resolved: false, author: null, has_screenshot: false });
     expect(typeof res.data.pin.created_at).toBe('number');
 
     const row = env.DB.raw.prepare('SELECT * FROM pins WHERE id = ?').get(PIN_ID);
@@ -187,7 +187,9 @@ describe('GET /api/pins', () => {
 });
 
 describe('PATCH /api/pins/:id', () => {
-  const patch = (id, body) => call(patchPin, { env, method: 'PATCH', params: { id }, body });
+  // The widget names the pin's project with every change (see tests/api/pin-limits.test.js).
+  const patch = (id, body) =>
+    call(patchPin, { env, method: 'PATCH', params: { id }, body: { project_id: PROJECT_ID, ...body } });
 
   it('toggles resolved', async () => {
     await post(validPin());

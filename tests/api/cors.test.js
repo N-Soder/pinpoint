@@ -24,10 +24,10 @@ const widgetCalls = {
   'POST /api/pins (error)': () => call(pins.onRequestPost, { env, method: 'POST', body: {} }),
   'PATCH /api/pins/:id': async () => {
     await call(pins.onRequestPost, { env, method: 'POST', body: validPin() });
-    return call(pin.onRequestPatch, { env, method: 'PATCH', params: { id: PIN_ID }, body: { resolved: true } });
+    return call(pin.onRequestPatch, { env, method: 'PATCH', params: { id: PIN_ID }, body: { resolved: true, project_id: PROJECT_ID } });
   },
   'PATCH /api/pins/:id (error)': () =>
-    call(pin.onRequestPatch, { env, method: 'PATCH', params: { id: uuid(404) }, body: { resolved: true } }),
+    call(pin.onRequestPatch, { env, method: 'PATCH', params: { id: uuid(404) }, body: { resolved: true, project_id: PROJECT_ID } }),
 };
 
 // Everything else is only ever called by the dashboard, from the same origin.

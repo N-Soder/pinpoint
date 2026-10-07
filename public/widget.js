@@ -419,7 +419,9 @@
 
   function fetchExistingPins() {
     var currentNorm = normalizeUrl(window.location.href);
-    pinpointGet('/api/pins?project_id=' + encodeURIComponent(PROJECT_ID))
+    // Ask for this page's pins only; the filter below stays as a second check
+    pinpointGet('/api/pins?project_id=' + encodeURIComponent(PROJECT_ID)
+        + '&page_url=' + encodeURIComponent(currentNorm))
       .then(function (res) {
         if (!res.ok) {
           console.warn('[Pinpoint] Failed to fetch pins:', res.status);
@@ -543,7 +545,7 @@
     resolveBtn.onclick = function () {
       resolveBtn.disabled = true;
       resolveBtn.textContent = 'Resolving...';
-      pinpointPatch('/api/pins/' + pin.id, { resolved: true }).then(function (res) {
+      pinpointPatch('/api/pins/' + pin.id, { resolved: true, project_id: PROJECT_ID }).then(function (res) {
         if (res.ok) {
           pin.resolved = true;
           markerEl.className = NS + 'marker resolved';

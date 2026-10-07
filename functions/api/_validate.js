@@ -87,6 +87,28 @@ export function scrubPageUrl(value) {
   return u.origin + u.pathname + (cleanQuery ? `?${cleanQuery}` : '') + (cleanFragment ? `#${cleanFragment}` : '');
 }
 
+/**
+ * The form in which two URLs for the same page compare equal: no review=
+ * parameter, no trailing slash, no credentials. Mirrors normalizeUrl in
+ * public/widget.js, which is what decides where a pin's marker appears.
+ */
+export function normalizePageUrl(value) {
+  let u;
+  try {
+    u = new URL(value);
+  } catch {
+    return value;
+  }
+  u.searchParams.delete('review');
+  const path = u.pathname.replace(/\/+$/, '') || '/';
+  const query = scrubParams(u.search.replace(/^\?/, ''));
+  const fragment = scrubFragment(u.hash.replace(/^#/, ''));
+  return u.origin + path + (query ? `?${query}` : '') + (fragment ? `#${fragment}` : '');
+}
+
+// The raster formats a canvas can export, base64-encoded. Nothing else (SVG in particular).
+export const SCREENSHOT_RE = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/;
+
 /** Non-empty string (after trim) no longer than `max`. */
 export function isRequiredString(value, max) {
   return typeof value === 'string' && value.trim().length > 0 && value.length <= max;
