@@ -1,4 +1,4 @@
-import { corsOptions, json, err } from '../_cors.js';
+import { widgetOptions, widgetJson as json, widgetErr as err } from '../_cors.js';
 import {
   isUuid, isHttpUrl, isRequiredString, isOptionalString, isOptionalNumber, readJsonObject,
 } from '../_validate.js';
@@ -12,7 +12,7 @@ function coercePin(row) {
 }
 
 export function onRequestOptions() {
-  return corsOptions();
+  return widgetOptions();
 }
 
 export async function onRequestGet({ request, env }) {
