@@ -21,7 +21,7 @@ Guidelines:
 
 - Keep changes focused. Open an issue first for larger features or architectural changes.
 - Add or update tests in `tests/api/` when you change API behaviour. Never put test files under `functions/`: Cloudflare Pages turns every file there into a route.
-- `public/widget.js` runs on third-party sites. Keep it dependency-free, ES5-compatible and ASCII-only (use `\u` escapes), and never write untrusted data with `innerHTML`.
+- `public/widget.js` runs on third-party sites. Keep it dependency-free, ES5-compatible and ASCII-only (use `\u` escapes), and never write untrusted data with `innerHTML`. Add or update tests in `tests/widget/` when you change it.
 - Never commit secrets. `.dev.vars` and `.env*` are git-ignored; production secrets belong in Cloudflare Pages secrets.
 - Schema changes go in `db/schema.sql` and must stay safe to re-run (`IF NOT EXISTS`).
 

@@ -47,7 +47,7 @@ For frontend-only work with hot reload, run `npm run dev` (port 8080) alongside 
 | `npm run deploy` | Build, then upload to the Pages project named in `wrangler.toml` |
 | `npm run lint` | ESLint (app, Functions and widget) |
 | `npm run typecheck` | TypeScript type check |
-| `npm test` | Vitest tests: API (`tests/api/`, against in-memory SQLite) and dashboard client (`src/`) |
+| `npm test` | Vitest tests: API (`tests/api/`, against in-memory SQLite), widget (`tests/widget/`, in jsdom) and dashboard client (`src/`) |
 | `npm run db:migrate:local` / `db:migrate:remote` | Apply `db/schema.sql` to the local or production D1 database |
 
 ## Deployment (Cloudflare Pages)
