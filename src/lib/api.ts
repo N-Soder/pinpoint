@@ -70,14 +70,24 @@ export async function fetchContactEmail(): Promise<string | null> {
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
+/** `limited`: too many attempts, try again later. `failed`: the server could not be reached or could not sign anyone in. */
+export type SignInResult = 'ok' | 'wrong' | 'limited' | 'failed';
+
 /** Sign in. On success the API sets the session cookie. */
-export async function verifyPassword(password: string): Promise<boolean> {
-  const res = await fetch('/api/auth/verify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password }),
-  });
-  return res.ok;
+export async function verifyPassword(password: string): Promise<SignInResult> {
+  try {
+    const res = await fetch('/api/auth/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    if (res.ok) return 'ok';
+    if (res.status === 401) return 'wrong';
+    if (res.status === 429) return 'limited';
+    return 'failed';
+  } catch {
+    return 'failed';
+  }
 }
 
 export async function checkSession(): Promise<boolean> {

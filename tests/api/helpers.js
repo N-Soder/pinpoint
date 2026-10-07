@@ -53,12 +53,15 @@ export async function call(handler, {
   rawBody,
   token,
   origin,
+  ip,
   params = {},
   waitUntil = () => {},
 } = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers.Cookie = `${SESSION_COOKIE}=${token}`;
   if (origin) headers.Origin = origin;
+  // Cloudflare sets this on every request; the rate limiter keys on it.
+  if (ip) headers['CF-Connecting-IP'] = ip;
   const request = new Request(`https://pinpoint.test${path}`, {
     method,
     headers,

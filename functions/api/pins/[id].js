@@ -1,6 +1,7 @@
 import { widgetOptions, widgetJson, widgetErr, json, err } from '../_cors.js';
 import { isAdmin } from '../_auth.js';
 import { readJsonObject } from '../_validate.js';
+import { LIMITS, clientOf, hit, retryAfter } from '../_ratelimit.js';
 
 function coercePin(row) {
   return { ...row, resolved: row.resolved === 1 || row.resolved === true };
@@ -12,6 +13,9 @@ export function onRequestOptions() {
 
 export async function onRequestPatch({ request, env, params }) {
   const { id } = params;
+
+  const limit = await hit(env, 'resolve', clientOf(request), LIMITS.resolvePerClient);
+  if (!limit.allowed) return widgetErr('Too many requests', 429, retryAfter(limit));
 
   const body = await readJsonObject(request, 1024);
   if (!body) return widgetErr('Invalid JSON');

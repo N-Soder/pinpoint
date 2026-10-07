@@ -18,7 +18,7 @@ afterEach(() => {
 describe('dashboard API client', () => {
   it('signs in by posting the password', async () => {
     fetchMock.mockResolvedValue(new Response('{"ok":true}'));
-    expect(await verifyPassword('secret')).toBe(true);
+    expect(await verifyPassword('secret')).toBe('ok');
     const [url, options] = fetchMock.mock.calls[0];
     expect(url).toBe('/api/auth/verify');
     expect(options?.method).toBe('POST');
@@ -40,9 +40,19 @@ describe('dashboard API client', () => {
     expect(await fetchContactEmail()).toBeNull();
   });
 
-  it('returns false when password verification is rejected', async () => {
-    fetchMock.mockResolvedValue(new Response('{}', { status: 401 }));
-    expect(await verifyPassword('wrong')).toBe(false);
+  it.each([
+    [401, 'wrong'],
+    [429, 'limited'],
+    [500, 'failed'],
+    [400, 'failed'],
+  ] as const)('reports a sign-in answered with HTTP %i as %s', async (status, expected) => {
+    fetchMock.mockResolvedValue(new Response('{"ok":false}', { status }));
+    expect(await verifyPassword('anything')).toBe(expected);
+  });
+
+  it('reports a sign-in that never reached the server as failed', async () => {
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+    expect(await verifyPassword('anything')).toBe('failed');
   });
 
   it('never sends an Authorization header; the session is a cookie', async () => {

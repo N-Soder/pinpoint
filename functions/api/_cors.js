@@ -31,14 +31,14 @@ export function json(data, status = 200, headers = {}) {
   });
 }
 
-export function err(message, status = 400) {
-  return json({ error: message }, status);
+export function err(message, status = 400, headers = {}) {
+  return json({ error: message }, status, headers);
 }
 
-export function widgetJson(data, status = 200) {
-  return json(data, status, WIDGET_CORS);
+export function widgetJson(data, status = 200, headers = {}) {
+  return json(data, status, { ...WIDGET_CORS, ...headers });
 }
 
-export function widgetErr(message, status = 400) {
-  return widgetJson({ error: message }, status);
+export function widgetErr(message, status = 400, headers = {}) {
+  return widgetJson({ error: message }, status, headers);
 }

@@ -2,6 +2,7 @@ import { widgetOptions, widgetJson as json, widgetErr as err } from '../_cors.js
 import {
   isUuid, isHttpUrl, isRequiredString, isOptionalString, isOptionalNumber, readJsonObject, scrubPageUrl,
 } from '../_validate.js';
+import { LIMITS, clientOf, hit, retryAfter } from '../_ratelimit.js';
 
 // Widget caps screenshots at 200,000 chars; leave headroom for the rest of the body.
 const MAX_BODY_BYTES = 300_000;
@@ -34,6 +35,9 @@ export async function onRequestGet({ request, env }) {
 }
 
 export async function onRequestPost({ request, env, waitUntil }) {
+  const perClient = await hit(env, 'pins', clientOf(request), LIMITS.pinsPerClient);
+  if (!perClient.allowed) return err('Too many requests', 429, retryAfter(perClient));
+
   const body = await readJsonObject(request, MAX_BODY_BYTES);
   if (!body) return err('Invalid or oversized JSON body');
 
@@ -64,6 +68,9 @@ export async function onRequestPost({ request, env, waitUntil }) {
   ) {
     return err('element_screenshot must be a base64 JPEG, PNG or WebP data URL under the size limit');
   }
+
+  const perProject = await hit(env, 'pins-project', project_id.toLowerCase(), LIMITS.pinsPerProject);
+  if (!perProject.allowed) return err('Too many requests', 429, retryAfter(perProject));
 
   // New pins always start open, timestamped by the server.
   const pin = {
