@@ -63,7 +63,7 @@ export function PasswordGate({ children }: { children: React.ReactNode }) {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
+            <div className="*:not-first:mt-2">
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"

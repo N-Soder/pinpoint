@@ -43,7 +43,7 @@ const NewProject = () => {
       <div className="p-8 max-w-lg mx-auto">
         <h1 className="text-2xl font-semibold mb-6">New Project</h1>
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-2">
+          <div className="*:not-first:mt-2">
             <Label htmlFor="name">Project Name</Label>
             <Input
               id="name"
@@ -54,7 +54,7 @@ const NewProject = () => {
               disabled={mutation.isPending}
             />
           </div>
-          <div className="space-y-2">
+          <div className="*:not-first:mt-2">
             <Label htmlFor="url">Site URL</Label>
             <Input
               id="url"
