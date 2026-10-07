@@ -1,9 +1,9 @@
-import { corsOptions, json } from '../_cors.js';
+import { sameOriginOptions, json } from '../_cors.js';
 import { verifyAdminSecret, createSession, sessionCookie } from '../_auth.js';
 import { readJsonObject } from '../_validate.js';
 
 export function onRequestOptions() {
-  return corsOptions();
+  return sameOriginOptions();
 }
 
 export async function onRequestPost({ request, env }) {

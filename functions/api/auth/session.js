@@ -1,8 +1,8 @@
-import { corsOptions, json } from '../_cors.js';
+import { sameOriginOptions, json } from '../_cors.js';
 import { isAdmin, sessionCookie } from '../_auth.js';
 
 export function onRequestOptions() {
-  return corsOptions();
+  return sameOriginOptions();
 }
 
 /** Lets the dashboard ask whether it is signed in; it cannot read the HttpOnly cookie itself. */

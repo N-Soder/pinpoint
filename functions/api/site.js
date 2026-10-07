@@ -1,10 +1,10 @@
-import { corsOptions, json } from './_cors.js';
+import { sameOriginOptions, json } from './_cors.js';
 
 // One address, nothing that could add headers or recipients to a mailto: link.
 const EMAIL = /^[^\s@<>"',;:?&]+@[^\s@<>"',;:?&]+\.[^\s@<>"',;:?&]+$/;
 
 export function onRequestOptions() {
-  return corsOptions();
+  return sameOriginOptions();
 }
 
 /** Public details about this instance for the landing page. */

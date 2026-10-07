@@ -1,4 +1,4 @@
-import { corsOptions, json, err } from '../_cors.js';
+import { widgetOptions, widgetJson, widgetErr, json, err } from '../_cors.js';
 import { isAdmin } from '../_auth.js';
 import { readJsonObject } from '../_validate.js';
 
@@ -7,16 +7,16 @@ function coercePin(row) {
 }
 
 export function onRequestOptions() {
-  return corsOptions();
+  return widgetOptions();
 }
 
 export async function onRequestPatch({ request, env, params }) {
   const { id } = params;
 
   const body = await readJsonObject(request, 1024);
-  if (!body) return err('Invalid JSON');
+  if (!body) return widgetErr('Invalid JSON');
 
-  if (typeof body.resolved !== 'boolean') return err('resolved (boolean) is required');
+  if (typeof body.resolved !== 'boolean') return widgetErr('resolved (boolean) is required');
 
   const resolvedInt = body.resolved ? 1 : 0;
   try {
@@ -24,11 +24,11 @@ export async function onRequestPatch({ request, env, params }) {
       'UPDATE pins SET resolved = ? WHERE id = ? RETURNING *'
     ).bind(resolvedInt, id).first();
 
-    if (!row) return err('Not found', 404);
-    return json({ pin: coercePin(row) });
+    if (!row) return widgetErr('Not found', 404);
+    return widgetJson({ pin: coercePin(row) });
   } catch (e) {
     console.error('pins PATCH failed', e);
-    return err('Database error', 500);
+    return widgetErr('Database error', 500);
   }
 }
 
