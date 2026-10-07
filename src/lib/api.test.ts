@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  checkSession, clearLegacyToken, createProject, deletePin, deleteProject, fetchPins,
+  checkSession, clearLegacyToken, createProject, deletePin, deleteProject, fetchContactEmail, fetchPins,
   fetchProjects, fetchProjectsWithCounts, patchPin, setUnauthorizedHandler, signOut, verifyPassword,
 } from './api';
 
@@ -23,6 +23,21 @@ describe('dashboard API client', () => {
     expect(url).toBe('/api/auth/verify');
     expect(options?.method).toBe('POST');
     expect(JSON.parse(options?.body as string)).toEqual({ password: 'secret' });
+  });
+
+  it('reads the contact address from the site endpoint', async () => {
+    fetchMock.mockResolvedValue(new Response('{"contact_email":"owner@example.com"}'));
+    expect(await fetchContactEmail()).toBe('owner@example.com');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/site');
+  });
+
+  it('has no contact address when none is configured or the request fails', async () => {
+    fetchMock.mockResolvedValue(new Response('{"contact_email":null}'));
+    expect(await fetchContactEmail()).toBeNull();
+    fetchMock.mockResolvedValue(new Response('{}', { status: 500 }));
+    expect(await fetchContactEmail()).toBeNull();
+    fetchMock.mockRejectedValue(new TypeError('network down'));
+    expect(await fetchContactEmail()).toBeNull();
   });
 
   it('returns false when password verification is rejected', async () => {
