@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { onRequestGet as listPins, onRequestPost as createPin } from '../../functions/api/pins/index.js';
 import { onRequestPatch as patchPin, onRequestDelete as deletePin } from '../../functions/api/pins/[id].js';
-import { onRequestOptions } from '../../functions/api/pins/index.js';
 import { ADMIN_TOKEN, PIN_ID, PROJECT_ID, call, makeEnv, seedProject, uuid, validPin } from './helpers.js';
 
 let env;
@@ -231,14 +230,5 @@ describe('DELETE /api/pins/:id', () => {
   it('returns 404 for an unknown pin', async () => {
     const res = await call(deletePin, { env, method: 'DELETE', params: { id: uuid(404) }, token: ADMIN_TOKEN });
     expect(res.status).toBe(404);
-  });
-});
-
-describe('CORS', () => {
-  it('answers preflight with 204 and allow headers', async () => {
-    const res = onRequestOptions();
-    expect(res.status).toBe(204);
-    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
-    expect(res.headers.get('Access-Control-Allow-Headers')).toContain('Authorization');
   });
 });

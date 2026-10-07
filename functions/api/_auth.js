@@ -42,17 +42,29 @@ export async function verifyAdminSecret(candidate, env) {
 // page scripts cannot read the session. Tokens are stateless:
 //   v1.<expiry ms>.<base64url HMAC-SHA256 of "v1.<expiry ms>">
 // The signing key is derived from ADMIN_PASSWORD, so rotating the password
-// ends every session.
+// ends every session. When SESSION_SECRET is set it is mixed into the key as
+// well: a stolen token then gives nothing to test password guesses against,
+// and rotating SESSION_SECRET ends every session without a password change.
 
 export const SESSION_COOKIE = 'pinpoint_session';
 export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const MIN_SESSION_SECRET_LENGTH = 32;
 
 const encoder = new TextEncoder();
 
-function sessionKey(secret) {
+/** Rejects when SESSION_SECRET is set but unusable, so a weak one is never silently ignored. */
+async function sessionKey(env) {
+  const sessionSecret = env.SESSION_SECRET;
+  let material = `pinpoint-session-v1:${env.ADMIN_PASSWORD}`;
+  if (sessionSecret != null && sessionSecret !== '') {
+    if (typeof sessionSecret !== 'string' || sessionSecret.length < MIN_SESSION_SECRET_LENGTH) {
+      throw new Error(`SESSION_SECRET must be at least ${MIN_SESSION_SECRET_LENGTH} characters`);
+    }
+    material = `pinpoint-session-v2:${sessionSecret}\n${env.ADMIN_PASSWORD}`;
+  }
   return crypto.subtle.importKey(
     'raw',
-    encoder.encode(`pinpoint-session-v1:${secret}`),
+    encoder.encode(material),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign', 'verify'],
@@ -68,15 +80,15 @@ function fromBase64Url(text) {
   return Uint8Array.from(binary, (c) => c.charCodeAt(0));
 }
 
-/** Issue a session token. Call only after verifyAdminSecret has passed. */
+/** Issue a session token. Call only after verifyAdminSecret has passed. Rejects if SESSION_SECRET is unusable. */
 export async function createSession(env, now = Date.now()) {
   const expires_at = now + SESSION_TTL_MS;
   const payload = `v1.${expires_at}`;
-  const signature = await crypto.subtle.sign('HMAC', await sessionKey(env.ADMIN_PASSWORD), encoder.encode(payload));
+  const signature = await crypto.subtle.sign('HMAC', await sessionKey(env), encoder.encode(payload));
   return { token: `${payload}.${toBase64Url(new Uint8Array(signature))}`, expires_at };
 }
 
-/** Returns true only for an unexpired token signed with the current secret. Fails closed. */
+/** Returns true only for an unexpired token signed with the current secrets. Fails closed. */
 export async function verifySession(token, env, now = Date.now()) {
   const secret = env.ADMIN_PASSWORD;
   if (typeof secret !== 'string' || secret.length === 0) return false;
@@ -91,7 +103,14 @@ export async function verifySession(token, env, now = Date.now()) {
   // Base64 leaves spare bits in the last character; accept only the canonical spelling.
   if (toBase64Url(signatureBytes) !== signature) return false;
 
-  return crypto.subtle.verify('HMAC', await sessionKey(secret), signatureBytes, encoder.encode(payload));
+  let key;
+  try {
+    key = await sessionKey(env);
+  } catch (e) {
+    console.error('session check refused:', e.message);
+    return false;
+  }
+  return crypto.subtle.verify('HMAC', key, signatureBytes, encoder.encode(payload));
 }
 
 /** Set-Cookie value for a session token; pass an empty token to clear the cookie. */

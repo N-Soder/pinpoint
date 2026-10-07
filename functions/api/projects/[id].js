@@ -1,8 +1,8 @@
-import { corsOptions, json, err } from '../_cors.js';
+import { sameOriginOptions, json, err } from '../_cors.js';
 import { isAdmin } from '../_auth.js';
 
 export function onRequestOptions() {
-  return corsOptions();
+  return sameOriginOptions();
 }
 
 export async function onRequestDelete({ request, env, params }) {

@@ -57,6 +57,7 @@ For frontend-only work with hot reload, run `npm run dev` (port 8080) alongside 
 3. Create a Pages project and set `name` in `wrangler.toml` to its name. Either connect it to your repository (build command `npm run build`, output directory `dist`) so pushes deploy, or deploy from your machine with `npm run deploy`.
 4. Set the secrets:
    - `npx wrangler pages secret put ADMIN_PASSWORD` (required; use a long random value)
+   - `npx wrangler pages secret put SESSION_SECRET` (recommended; generate one with `openssl rand -base64 48`)
    - `npx wrangler pages secret put NTFY_TOPIC` (optional; sends [ntfy.sh](https://ntfy.sh) push notifications for new pins)
    - `npx wrangler pages secret put CONTACT_EMAIL` (optional; shows a contact address on the landing page)
 5. **Strongly recommended:** add a Cloudflare [rate limiting rule](https://developers.cloudflare.com/waf/rate-limiting-rules/) for `POST /api/auth/verify` and `POST /api/pins`. The app has no built-in rate limiting.
@@ -66,6 +67,7 @@ For frontend-only work with hot reload, run `npm run dev` (port 8080) alongside 
 | Name | Where | Required | Description |
 |------|-------|----------|-------------|
 | `ADMIN_PASSWORD` | Pages secret / `.dev.vars` | yes | Shared password for the admin dashboard. If it is unset, all admin requests are denied. |
+| `SESSION_SECRET` | Pages secret / `.dev.vars` | recommended | Random value of at least 32 characters used to sign admin sessions. Setting or changing it signs everyone out. If it is set but shorter than 32 characters, sign-in is refused. |
 | `NTFY_TOPIC` | Pages secret / `.dev.vars` | no | ntfy.sh topic name. Anyone who knows a topic name can read it, so use a long random name. |
 | `CONTACT_EMAIL` | Pages secret / `.dev.vars` | no | Address shown on the landing page for people who want to try your instance. The section is hidden when unset. |
 | `DB` | `wrangler.toml` | yes | D1 binding |
@@ -82,7 +84,7 @@ The widget does nothing unless the page URL contains `review=` and the script `s
 
 Read this before you deploy:
 
-- **The admin dashboard** uses a single shared password, checked server-side against `ADMIN_PASSWORD`. Signing in sets a signed session cookie that lasts 7 days. The cookie is `HttpOnly`, so page scripts cannot read it, and the password itself is never stored in the browser. Sessions are stateless: signing out clears the cookie, and changing `ADMIN_PASSWORD` ends every session. The session key is derived from the password, so use a unique, long random password.
+- **The admin dashboard** uses a single shared password, checked server-side against `ADMIN_PASSWORD`. Signing in sets a signed session cookie that lasts 7 days. The cookie is `HttpOnly`, so page scripts cannot read it, and the password itself is never stored in the browser. Sessions are stateless: signing out clears the cookie, and changing `ADMIN_PASSWORD` or `SESSION_SECRET` ends every session. Set `SESSION_SECRET`: without it the session key is derived from the password alone, so anyone who obtains a session cookie can test password guesses against it offline. Either way, use a unique, long random password.
 - **Widget endpoints are anonymous by design.** Anyone who knows a project ID can list that project's pins (comments, author names and screenshots), add pins, and mark pins resolved or open. The project ID is in the embed snippet, so **anyone who can see your site's HTML can read its feedback.** Only embed the widget where that is acceptable, for example on staging sites, or add the snippet only for reviewers. Each pin stores the page URL including its query string and `#fragment`. Parameters that look like credentials (names such as `token`, `code`, `key` or `signature`, and values shaped like a signed token) are removed, along with `review=`, by the widget before sending and again by the API. This goes by name, so it cannot catch a token in the path or under an unusual name: avoid leaving feedback on pages such as password-reset or magic links.
 - Listing projects, creating projects and deleting anything require an admin session. Admin requests that name a different origin are refused.
 
