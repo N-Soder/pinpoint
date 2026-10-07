@@ -91,14 +91,59 @@
     return 'Other';
   }
 
-  // Normalise a URL for pageUrl comparison: strip ?review param and trailing slashes
+  // Page URLs can carry credentials (reset tokens, OAuth codes, signed links).
+  // They are removed before a URL is sent or compared, by parameter name plus
+  // values shaped like a signed token. functions/api/_validate.js does the
+  // same on arrival; tests/page-url-cases.js runs one table against both.
+  var CREDENTIAL_NAMES = ['key', 'code', 'auth', 'sig', 'otp', 'sid', 'pass', 'session', 'sessionid', 'phpsessid',
+    'jsessionid', 'authcode', 'authorization', 'accesskey', 'privatekey', 'authkey'];
+  var CREDENTIAL_NAME_PARTS = ['token', 'secret', 'passw', 'pwd', 'signature', 'credential', 'apikey', 'jwt'];
+  var SIGNED_TOKEN_RE = /^eyJ[\w-]+\.[\w-]+\.[\w-]*$/;
+
+  function isCredentialParam(pair) {
+    var eq = pair.indexOf('=');
+    var name = eq === -1 ? pair : pair.slice(0, eq);
+    var value = eq === -1 ? '' : pair.slice(eq + 1);
+    try { name = decodeURIComponent(name); } catch (e) {}
+    name = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (CREDENTIAL_NAMES.indexOf(name) !== -1) return true;
+    for (var i = 0; i < CREDENTIAL_NAME_PARTS.length; i++) {
+      if (name.indexOf(CREDENTIAL_NAME_PARTS[i]) !== -1) return true;
+    }
+    return SIGNED_TOKEN_RE.test(value);
+  }
+
+  function scrubParams(query) {
+    var kept = [];
+    var pairs = query.split('&');
+    for (var i = 0; i < pairs.length; i++) {
+      if (!isCredentialParam(pairs[i])) kept.push(pairs[i]);
+    }
+    return kept.join('&');
+  }
+
+  function scrubFragment(fragment) {
+    // A hash route with its own query ("#/reset?token=..."): keep the route.
+    var q = fragment.indexOf('?');
+    if (q !== -1) {
+      var rest = scrubParams(fragment.slice(q + 1));
+      return fragment.slice(0, q) + (rest ? '?' + rest : '');
+    }
+    // A parameter list ("#access_token=...&expires_in=..."): all or nothing.
+    if (fragment.indexOf('=') !== -1 && scrubParams(fragment) !== fragment) return '';
+    return fragment;
+  }
+
+  // Normalise a URL for storing and for pageUrl comparison: strip the ?review
+  // param, trailing slashes and credentials (u.origin already leaves out user:password@)
   function normalizeUrl(url) {
     try {
       var u = new URL(url);
       u.searchParams.delete('review');
       var path = u.pathname.replace(/\/+$/, '') || '/';
-      var search = u.search === '?' ? '' : u.search;
-      return u.origin + path + search + u.hash;
+      var search = scrubParams(u.search.replace(/^\?/, ''));
+      var hash = scrubFragment(u.hash.replace(/^#/, ''));
+      return u.origin + path + (search ? '?' + search : '') + (hash ? '#' + hash : '');
     } catch (e) {
       return url.replace(/[?&]review=[^&]*/g, '').replace(/\?$/, '').replace(/\/+$/, '');
     }

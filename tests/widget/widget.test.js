@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { HOST, NS, PROJECT_ID, SITE, loadWidget, pin, settle, uuid } from './helpers.js';
+import { SCRUBBED, UNCHANGED } from '../page-url-cases.js';
 
 describe('activation', () => {
   it('does nothing when the script src has no project', async () => {
@@ -156,5 +157,41 @@ describe('screenshot library', () => {
     expect(loader.src).toBe('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
     expect(loader.integrity).toMatch(/^sha512-[A-Za-z0-9+/]{86}==$/);
     expect(loader.crossOrigin).toBe('anonymous');
+  });
+});
+
+describe('page URL sent with a comment', () => {
+  /** The same page opened in review mode. */
+  const inReviewMode = (url) => {
+    const [beforeHash, hash = ''] = url.split(/(?=#)/);
+    return `${beforeHash}${beforeHash.includes('?') ? '&' : '?'}review=1${hash}`;
+  };
+
+  async function storedUrlFor(pageUrl) {
+    const { requests, startComment } = await loadWidget({ pageUrl });
+    const form = await startComment('h1');
+    form.comment.value = 'Feedback';
+    await form.submit();
+    return requests.at(-1).body.page_url;
+  }
+
+  it.each(UNCHANGED)('keeps %s', async (url) => {
+    expect(await storedUrlFor(inReviewMode(url))).toBe(url);
+  });
+
+  it.each(SCRUBBED)('%s -> %s', async (url, expected) => {
+    expect(await storedUrlFor(inReviewMode(url))).toBe(expected);
+  });
+
+  it('still shows a pin on a page whose URL carries a credential', async () => {
+    const { findAll } = await loadWidget({
+      pageUrl: `${SITE}/reset?token=today&review=1`,
+      pins: [
+        pin({ id: uuid(1), page_url: `${SITE}/reset` }),
+        // Stored before credentials were removed, under a different token.
+        pin({ id: uuid(2), page_url: `${SITE}/reset?token=last-week` }),
+      ],
+    });
+    expect(findAll('marker')).toHaveLength(2);
   });
 });
