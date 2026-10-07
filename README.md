@@ -78,7 +78,7 @@ For frontend-only work with hot reload, run `npm run dev` (port 8080) alongside 
 <script src="https://your-pinpoint-host/widget.js?project=PROJECT_ID"></script>
 ```
 
-The widget does nothing unless the page URL contains `review=` and the script `src` contains `project=`. In review mode, existing pins for the page appear as numbered markers (red for open, grey for resolved). Clicking a marker shows the comment and lets the reviewer resolve it.
+The widget does nothing unless the page URL has a `review=` parameter and the script `src` contains `project=`. In review mode, existing pins for the page appear as numbered markers (red for open, grey for resolved). Clicking a marker shows the comment and lets the reviewer resolve it.
 
 ## Security model
 
