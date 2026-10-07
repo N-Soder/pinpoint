@@ -40,7 +40,7 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* Nav */}
-      <header className="border-b border-border px-6 py-4 flex items-center justify-between bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+      <header className="border-b border-border px-6 py-4 flex items-center justify-between bg-white/80 backdrop-blur-xs sticky top-0 z-10">
         <div className="flex items-center gap-2">
           <Crosshair className="h-5 w-5 text-blue-600" />
           <span className="font-semibold text-sm tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Pinpoint</span>
@@ -52,16 +52,16 @@ export default function Landing() {
 
       <main className="flex-1">
         {/* Hero */}
-        <section className="relative overflow-hidden bg-gradient-to-b from-blue-50/60 via-white to-white">
+        <section className="relative overflow-hidden bg-linear-to-b from-blue-50/60 via-white to-white">
           {/* Decorative blobs */}
           <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-200/30 blur-3xl" />
           <div className="pointer-events-none absolute -top-16 right-0 h-72 w-72 rounded-full bg-indigo-200/25 blur-3xl" />
 
           <div className="relative mx-auto max-w-3xl px-6 py-24 text-center">
-            <div className="mb-6 inline-flex items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 p-4 ring-1 ring-blue-200/60">
+            <div className="mb-6 inline-flex items-center justify-center rounded-2xl bg-linear-to-br from-blue-100 to-indigo-100 p-4 ring-1 ring-blue-200/60">
               <Crosshair className="h-10 w-10 text-blue-600" />
             </div>
-            <h1 className="mb-4 text-5xl font-bold tracking-tight bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 bg-clip-text text-transparent">
+            <h1 className="mb-4 text-5xl font-bold tracking-tight bg-linear-to-r from-blue-600 via-indigo-600 to-blue-500 bg-clip-text text-transparent">
               Pinpoint
             </h1>
             <p className="mb-3 text-xl font-semibold text-foreground">
@@ -71,7 +71,7 @@ export default function Landing() {
               Click any element on your site to leave in-context feedback. Comments are
               stored and reviewable in a simple admin dashboard.
             </p>
-            <Button asChild size="lg" className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 border-0 shadow-md shadow-blue-200">
+            <Button asChild size="lg" className="gap-2 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 border-0 shadow-md shadow-blue-200">
               <Link to="/admin">
                 Go to Admin Panel
                 <span aria-hidden>→</span>
@@ -81,7 +81,7 @@ export default function Landing() {
         </section>
 
         {/* Features */}
-        <section className="border-y border-border py-20 px-6 bg-gradient-to-b from-white to-slate-50/80">
+        <section className="border-y border-border py-20 px-6 bg-linear-to-b from-white to-slate-50/80">
           <div className="mx-auto max-w-4xl">
             <h2 className="mb-2 text-center text-2xl font-bold">Everything you need</h2>
             <p className="mb-12 text-center text-muted-foreground text-sm">Three features. Zero friction.</p>
@@ -108,7 +108,7 @@ export default function Landing() {
           <div className="space-y-8">
             {steps.map((step) => (
               <div key={step.number} className="flex gap-5 items-start">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-sm shadow-md shadow-blue-200">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-blue-500 to-indigo-600 text-white font-bold text-sm shadow-md shadow-blue-200">
                   {step.number}
                 </div>
                 <div>
@@ -121,7 +121,7 @@ export default function Landing() {
         </section>
 
         {/* CTA banner */}
-        <section className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 text-white py-16 px-6 text-center relative overflow-hidden">
+        <section className="bg-linear-to-r from-blue-600 via-blue-700 to-indigo-700 text-white py-16 px-6 text-center relative overflow-hidden">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.08),transparent_60%)]" />
           <div className="relative">
             <h2 className="mb-4 text-2xl font-bold">Ready to review your feedback?</h2>
