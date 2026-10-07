@@ -1,9 +1,9 @@
-import { corsOptions, json, err } from '../_cors.js';
+import { sameOriginOptions, json, err } from '../_cors.js';
 import { isAdmin } from '../_auth.js';
 import { isUuid, isHttpUrl, isRequiredString, readJsonObject } from '../_validate.js';
 
 export function onRequestOptions() {
-  return corsOptions();
+  return sameOriginOptions();
 }
 
 export async function onRequestGet({ request, env }) {
