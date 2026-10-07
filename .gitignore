@@ -25,6 +25,10 @@ dist-ssr
 # Local security audit report — kept out of the repo intentionally
 AUDIT.md
 
+# Agent session notes — local only (see AGENTS.md)
+HANDOFF.md
+TODO.md
+
 # Test output
 coverage
 playwright-report

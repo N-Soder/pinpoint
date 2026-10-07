@@ -44,6 +44,7 @@ For frontend-only work with hot reload, run `npm run dev` (port 8080) alongside 
 | `npm run dev:cf` | Serve `dist/` with Pages Functions and local D1 via Wrangler |
 | `npm run build` | Production build to `dist/` |
 | `npm run preview` | Build, then serve with Wrangler |
+| `npm run deploy` | Build, then upload to the Pages project named in `wrangler.toml` |
 | `npm run lint` | ESLint (app, Functions and widget) |
 | `npm run typecheck` | TypeScript type check |
 | `npm test` | Vitest tests: API (`tests/api/`, against in-memory SQLite) and dashboard client (`src/`) |
@@ -53,7 +54,7 @@ For frontend-only work with hot reload, run `npm run dev` (port 8080) alongside 
 
 1. Create a D1 database with `npx wrangler d1 create pinpoint-db` and put its ID in `wrangler.toml`.
 2. Apply the schema with `npm run db:migrate:remote`.
-3. Create a Pages project connected to your repository. Use the build command `npm run build` and the output directory `dist`.
+3. Create a Pages project and set `name` in `wrangler.toml` to its name. Either connect it to your repository (build command `npm run build`, output directory `dist`) so pushes deploy, or deploy from your machine with `npm run deploy`.
 4. Set the secrets:
    - `npx wrangler pages secret put ADMIN_PASSWORD` (required; use a long random value)
    - `npx wrangler pages secret put NTFY_TOPIC` (optional; sends [ntfy.sh](https://ntfy.sh) push notifications for new pins)
