@@ -4,7 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { checkSession, clearLegacyToken, setUnauthorizedHandler, verifyPassword } from "@/lib/api";
+import { checkSession, clearLegacyToken, setUnauthorizedHandler, verifyPassword, type SignInResult } from "@/lib/api";
+
+const SIGN_IN_ERRORS: Record<Exclude<SignInResult, "ok">, string> = {
+  wrong: "Incorrect password. Try again.",
+  limited: "Too many attempts. Wait a few minutes, then try again.",
+  failed: "Couldn't sign in. Check your connection and try again.",
+};
 
 // Each admin route mounts its own gate, so remember a confirmed session
 // across navigations instead of asking the API again every time.
@@ -18,7 +24,7 @@ export function PasswordGate({ children }: { children: React.ReactNode }) {
     setAuthenticatedState(value);
   };
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -43,14 +49,13 @@ export function PasswordGate({ children }: { children: React.ReactNode }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setError(false);
-    const ok = await verifyPassword(password);
-    if (ok) {
-      setPassword("");
+    setError(null);
+    const result = await verifyPassword(password);
+    setPassword("");
+    if (result === "ok") {
       setAuthenticated(true);
     } else {
-      setError(true);
-      setPassword("");
+      setError(SIGN_IN_ERRORS[result]);
     }
     setLoading(false);
   }
@@ -71,14 +76,14 @@ export function PasswordGate({ children }: { children: React.ReactNode }) {
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
-                  setError(false);
+                  setError(null);
                 }}
                 placeholder="Enter admin password"
                 autoFocus
                 disabled={loading}
               />
               {error && (
-                <p className="text-sm text-destructive">Incorrect password. Try again.</p>
+                <p className="text-sm text-destructive" role="alert">{error}</p>
               )}
             </div>
             <Button type="submit" className="w-full" disabled={loading}>

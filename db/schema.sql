@@ -26,6 +26,15 @@ CREATE TABLE IF NOT EXISTS pins (
   created_at          INTEGER NOT NULL             -- Unix ms
 );
 
+-- Counters for the built-in rate limiter (functions/api/_ratelimit.js).
+-- A key is a limit name plus a keyed hash of what it counts (a client address
+-- or a project); no address is stored. Rows are swept after a day.
+CREATE TABLE IF NOT EXISTS rate_limits (
+  key           TEXT    NOT NULL PRIMARY KEY,
+  window_start  INTEGER NOT NULL,             -- Unix ms
+  count         INTEGER NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_pins_project_id ON pins(project_id);
 CREATE INDEX IF NOT EXISTS idx_pins_resolved    ON pins(resolved);
 CREATE INDEX IF NOT EXISTS idx_pins_page_url    ON pins(page_url);

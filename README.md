@@ -60,7 +60,9 @@ For frontend-only work with hot reload, run `npm run dev` (port 8080) alongside 
    - `npx wrangler pages secret put SESSION_SECRET` (recommended; generate one with `openssl rand -base64 48`)
    - `npx wrangler pages secret put NTFY_TOPIC` (optional; sends [ntfy.sh](https://ntfy.sh) push notifications for new pins)
    - `npx wrangler pages secret put CONTACT_EMAIL` (optional; shows a contact address on the landing page)
-5. **Strongly recommended:** add a Cloudflare [rate limiting rule](https://developers.cloudflare.com/waf/rate-limiting-rules/) for `POST /api/auth/verify` and `POST /api/pins`. The app has no built-in rate limiting.
+5. Optional: add a Cloudflare [rate limiting rule](https://developers.cloudflare.com/waf/rate-limiting-rules/) in front as well. The app limits sign-in attempts and new pins itself (see [Security model](#security-model)); a Cloudflare rule turns excess requests away before they reach it, but only on hostnames in your own zone, not on the project's `pages.dev` address.
+
+When you update an existing deployment, run `npm run db:migrate:remote` before `npm run deploy`. The schema only ever adds to what is there, so it is safe to re-run.
 
 ## Configuration
 
@@ -86,13 +88,19 @@ Read this before you deploy:
 
 - **The admin dashboard** uses a single shared password, checked server-side against `ADMIN_PASSWORD`. Signing in sets a signed session cookie that lasts 7 days. The cookie is `HttpOnly`, so page scripts cannot read it, and the password itself is never stored in the browser. Sessions are stateless: signing out clears the cookie, and changing `ADMIN_PASSWORD` or `SESSION_SECRET` ends every session. Set `SESSION_SECRET`: without it the session key is derived from the password alone, so anyone who obtains a session cookie can test password guesses against it offline. Either way, use a unique, long random password.
 - **Widget endpoints are anonymous by design.** Anyone who knows a project ID can list that project's pins (comments, author names and screenshots), add pins, and mark pins resolved or open. The project ID is in the embed snippet, so **anyone who can see your site's HTML can read its feedback.** Only embed the widget where that is acceptable, for example on staging sites, or add the snippet only for reviewers. Each pin stores the page URL including its query string and `#fragment`. Parameters that look like credentials (names such as `token`, `code`, `key` or `signature`, and values shaped like a signed token) are removed, along with `review=`, by the widget before sending and again by the API. This goes by name, so it cannot catch a token in the path or under an unusual name: avoid leaving feedback on pages such as password-reset or magic links.
+- **Rate limits are built in**, counted in the database so they apply on every hostname:
+  - sign-in: 10 attempts per client per 15 minutes, and 100 in total. While the total is reached nobody can sign in, though existing sessions keep working; that is the price of a limit that guessing from many addresses cannot get around.
+  - new pins: 60 per client per 10 minutes, and 300 per project per hour.
+  - resolve and reopen: 120 per client per 10 minutes.
+
+  A client is an IPv4 address or an IPv6 /64. Counters store a keyed hash, not the address, and are deleted after a day. The numbers are constants in `functions/api/_ratelimit.js`. If the `rate_limits` table is missing, limits are not enforced and an error is logged on each request.
 - Listing projects, creating projects and deleting anything require an admin session. Admin requests that name a different origin are refused.
 
 See [SECURITY.md](SECURITY.md) to report a vulnerability.
 
 ## Database schema
 
-See [`db/schema.sql`](db/schema.sql). The schema has two tables. `projects` holds the ID, name, site URL and creation time. `pins` holds each comment, its CSS selector, element text, screenshot, author, browser, viewport, click offsets, resolved flag and creation time. Pins are deleted along with their project.
+See [`db/schema.sql`](db/schema.sql). `projects` holds the ID, name, site URL and creation time. `pins` holds each comment, its CSS selector, element text, screenshot, author, browser, viewport, click offsets, resolved flag and creation time. Pins are deleted along with their project. `rate_limits` holds the short-lived counters behind the built-in rate limits.
 
 ## Contributing
 
