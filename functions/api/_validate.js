@@ -20,6 +20,73 @@ export function isHttpUrl(value, maxLength = 2048) {
   }
 }
 
+// ── Page URLs ────────────────────────────────────────────────────────────────
+//
+// Pins record the page they were left on. Page URLs can carry credentials
+// (reset tokens, OAuth codes, signed links), which have no business in the
+// database or in a notification, so those parts are removed before storing.
+// This goes by parameter name, plus values shaped like a signed token; a
+// credential in the path itself cannot be recognised.
+// public/widget.js does the same before sending. Keep the two in step:
+// tests/page-url-cases.js runs one table of cases against both.
+
+const CREDENTIAL_NAMES = new Set([
+  'key', 'code', 'auth', 'sig', 'otp', 'sid', 'pass', 'session', 'sessionid', 'phpsessid',
+  'jsessionid', 'authcode', 'authorization', 'accesskey', 'privatekey', 'authkey',
+]);
+const CREDENTIAL_NAME_PARTS = ['token', 'secret', 'passw', 'pwd', 'signature', 'credential', 'apikey', 'jwt'];
+const SIGNED_TOKEN_RE = /^eyJ[\w-]+\.[\w-]+\.[\w-]*$/;
+
+function isCredentialParam(pair) {
+  const eq = pair.indexOf('=');
+  let name = eq === -1 ? pair : pair.slice(0, eq);
+  const value = eq === -1 ? '' : pair.slice(eq + 1);
+  try {
+    name = decodeURIComponent(name);
+  } catch {
+    // Not valid percent-encoding: judge the raw name.
+  }
+  name = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return CREDENTIAL_NAMES.has(name)
+    || CREDENTIAL_NAME_PARTS.some((part) => name.includes(part))
+    || SIGNED_TOKEN_RE.test(value);
+}
+
+function scrubParams(query) {
+  return query.split('&').filter((pair) => !isCredentialParam(pair)).join('&');
+}
+
+function scrubFragment(fragment) {
+  // A hash route with its own query ("#/reset?token=..."): keep the route.
+  const q = fragment.indexOf('?');
+  if (q !== -1) {
+    const rest = scrubParams(fragment.slice(q + 1));
+    return fragment.slice(0, q) + (rest ? `?${rest}` : '');
+  }
+  // A parameter list ("#access_token=...&expires_in=..."): all or nothing.
+  if (fragment.includes('=') && scrubParams(fragment) !== fragment) return '';
+  return fragment;
+}
+
+/**
+ * Returns `value` without credentials in its authority, query or fragment.
+ * A URL with nothing to remove comes back exactly as given.
+ */
+export function scrubPageUrl(value) {
+  let u;
+  try {
+    u = new URL(value);
+  } catch {
+    return value;
+  }
+  const query = u.search.slice(1);
+  const fragment = u.hash.slice(1);
+  const cleanQuery = scrubParams(query);
+  const cleanFragment = scrubFragment(fragment);
+  if (u.username === '' && u.password === '' && cleanQuery === query && cleanFragment === fragment) return value;
+  return u.origin + u.pathname + (cleanQuery ? `?${cleanQuery}` : '') + (cleanFragment ? `#${cleanFragment}` : '');
+}
+
 /** Non-empty string (after trim) no longer than `max`. */
 export function isRequiredString(value, max) {
   return typeof value === 'string' && value.trim().length > 0 && value.length <= max;

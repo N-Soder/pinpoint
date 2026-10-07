@@ -62,13 +62,34 @@ describe('POST /api/pins', () => {
     expect(res.status).toBe(400);
   });
 
-  it.each(['https://evil.test/x.png', 'javascript:alert(1)', 'data:text/html,<script>', 42])(
+  it.each([
+    'https://evil.test/x.png', 'javascript:alert(1)', 'data:text/html,<script>', 42,
+    // Only the raster formats a canvas can produce, base64-encoded.
+    'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>',
+    'data:image/svg+xml;base64,PHN2Zy8+',
+    'data:image/jpeg,not-base64',
+    'data:image/jpeg;base64,AAAA"><script>',
+    'data:image/jpeg;base64,',
+  ])(
     'rejects element_screenshot %p',
     async (shot) => {
       const res = await post(validPin({ element_screenshot: shot }));
       expect(res.status).toBe(400);
     },
   );
+
+  it.each(['jpeg', 'png', 'webp'])('accepts a base64 %s screenshot', async (type) => {
+    const res = await post(validPin({ element_screenshot: `data:image/${type};base64,iVBORw0KGgo+/A==` }));
+    expect(res.status).toBe(201);
+  });
+
+  it('stores the page URL without credentials it carried', async () => {
+    const res = await post(validPin({ page_url: 'https://example.com/reset?step=2&token=abc123#access_token=xyz' }));
+    expect(res.status).toBe(201);
+    expect(res.data.pin.page_url).toBe('https://example.com/reset?step=2');
+    const row = env.DB.raw.prepare('SELECT page_url FROM pins WHERE id = ?').get(PIN_ID);
+    expect(row.page_url).toBe('https://example.com/reset?step=2');
+  });
 
   it.each([
     ['blank comment', { comment: '   ' }],
@@ -117,6 +138,16 @@ describe('POST /api/pins', () => {
     expect(url).toBe('https://ntfy.sh/my-topic');
     expect(init.body).toContain('by Sam');
     expect(init.body).toContain('Typo in heading');
+    fetchMock.mockRestore();
+  });
+
+  it('leaves credentials in the page URL out of the notification', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('ok'));
+    env.NTFY_TOPIC = 'my-topic';
+    await post(validPin({ page_url: 'https://example.com/reset?token=abc123' }));
+    const body = fetchMock.mock.calls[0][1].body;
+    expect(body).toContain('https://example.com/reset');
+    expect(body).not.toContain('abc123');
     fetchMock.mockRestore();
   });
 
