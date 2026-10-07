@@ -5,6 +5,9 @@ updates:
     schedule:
       interval: weekly
     groups:
+      # React and its type packages must move together: react-dom pins its react peer.
+      react:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
       minor-and-patch:
         update-types: [minor, patch]
   - package-ecosystem: github-actions

@@ -14,7 +14,7 @@ Pinpoint lets reviewers leave pinned, in-context comments directly on any page o
 
 | Part | Technology |
 |------|------------|
-| Admin UI | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui |
+| Admin UI | React 19, TypeScript, Vite, Tailwind CSS, shadcn/ui |
 | API | [Cloudflare Pages Functions](https://developers.cloudflare.com/pages/functions/) (`functions/api/`) |
 | Database | [Cloudflare D1](https://developers.cloudflare.com/d1/) (SQLite), schema in `db/schema.sql` |
 | Widget | `public/widget.js`: vanilla JS, no build step. Screenshots use [html2canvas](https://html2canvas.hertzen.com/), loaded from cdnjs with Subresource Integrity |
