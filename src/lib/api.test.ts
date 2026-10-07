@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  screenshotUrl,
   checkSession, clearLegacyToken, createProject, deletePin, deleteProject, fetchContactEmail, fetchPins,
   fetchProjects, fetchProjectsWithCounts, patchPin, setUnauthorizedHandler, signOut, verifyPassword,
 } from './api';
@@ -119,7 +120,7 @@ describe('dashboard API client', () => {
 
   it('encodes project query parameters when fetching pins', async () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ pins: [{ id: 'pin-1' }] })));
-    expect(await fetchPins('site & preview')).toEqual([{ id: 'pin-1' }]);
+    expect(await fetchPins('site & preview')).toEqual({ pins: [{ id: 'pin-1' }], hasMore: false });
     expect(fetchMock.mock.calls[0][0]).toBe('/api/pins?project_id=site%20%26%20preview');
   });
 
@@ -167,5 +168,14 @@ describe('dashboard API client', () => {
   it('propagates network errors', async () => {
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
     await expect(fetchProjects()).rejects.toThrow('Failed to fetch');
+  });
+
+  it('says when a project has more pins than the API returns', async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ pins: [{ id: 'pin-1' }], has_more: true })));
+    expect(await fetchPins('p')).toEqual({ pins: [{ id: 'pin-1' }], hasMore: true });
+  });
+
+  it('points screenshots at the admin-only endpoint', () => {
+    expect(screenshotUrl('a/b')).toBe('/api/screenshots/a%2Fb');
   });
 });

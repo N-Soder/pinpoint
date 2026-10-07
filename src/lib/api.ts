@@ -43,7 +43,8 @@ export interface Pin {
   page_url: string;
   element_selector: string;
   element_text: string | null;
-  element_screenshot: string | null;
+  /** The image itself is not in pin lists; load it from screenshotUrl(pin.id). */
+  has_screenshot: boolean;
   comment: string;
   author: string | null;
   browser: string | null;
@@ -140,11 +141,22 @@ export async function deleteProject(id: string): Promise<void> {
 
 // ── Pins ─────────────────────────────────────────────────────────────────────
 
-export async function fetchPins(projectId: string): Promise<Pin[]> {
-  const data = await apiFetch<{ pins: Pin[] }>(
+export interface PinList {
+  pins: Pin[];
+  /** The project holds more pins than the API returns in one list (the newest come first). */
+  hasMore: boolean;
+}
+
+export async function fetchPins(projectId: string): Promise<PinList> {
+  const data = await apiFetch<{ pins: Pin[]; has_more?: boolean }>(
     `/api/pins?project_id=${encodeURIComponent(projectId)}`
   );
-  return data.pins;
+  return { pins: data.pins, hasMore: data.has_more === true };
+}
+
+/** Where the dashboard loads a pin's screenshot from. Admin only. */
+export function screenshotUrl(pinId: string): string {
+  return `/api/screenshots/${encodeURIComponent(pinId)}`;
 }
 
 export async function patchPin(id: string, updates: { resolved: boolean }): Promise<Pin> {

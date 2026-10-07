@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchProjects, fetchPins, patchPin, deletePin, type Pin } from "@/lib/api";
+import { fetchProjects, fetchPins, patchPin, deletePin, screenshotUrl, type PinList } from "@/lib/api";
 import { safeHttpUrl } from "@/lib/utils";
 import AppLayout from "@/components/AppLayout";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +35,7 @@ const ProjectDashboard = () => {
   });
 
   const {
-    data: pins = [],
+    data: pinList,
     isLoading: pinsLoading,
     error,
     refetch,
@@ -53,9 +53,9 @@ const ProjectDashboard = () => {
       patchPin(pinId, { resolved }),
     onMutate: async ({ pinId, resolved }) => {
       await queryClient.cancelQueries({ queryKey: ["pins", id] });
-      const previous = queryClient.getQueryData<Pin[]>(["pins", id]);
-      queryClient.setQueryData<Pin[]>(["pins", id], (old) =>
-        old?.map((p) => (p.id === pinId ? { ...p, resolved } : p)) ?? []
+      const previous = queryClient.getQueryData<PinList>(["pins", id]);
+      queryClient.setQueryData<PinList>(["pins", id], (old) =>
+        old && { ...old, pins: old.pins.map((p) => (p.id === pinId ? { ...p, resolved } : p)) }
       );
       return { previous };
     },
@@ -122,7 +122,7 @@ const ProjectDashboard = () => {
   }
 
   // ── Derived state ─────────────────────────────────────────────────────────
-  const allPins = [...pins].sort(
+  const allPins = [...(pinList?.pins ?? [])].sort(
     (a, b) => (b.created_at ?? 0) - (a.created_at ?? 0)
   );
   const openCount = allPins.filter((p) => !p.resolved).length;
@@ -200,6 +200,12 @@ const ProjectDashboard = () => {
           </TabsList>
 
           <TabsContent value={filter} className="mt-4">
+            {pinList?.hasMore && (
+              <p className="text-xs text-muted-foreground mb-4">
+                Showing the newest {allPins.length} pins. This project has more; delete pins you no
+                longer need to see the rest.
+              </p>
+            )}
             {filteredPins.length === 0 ? (
               <div className="text-center py-16 border rounded-lg bg-card">
                 <MessageSquare className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
@@ -277,10 +283,11 @@ const ProjectDashboard = () => {
                               </div>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
-                              {pin.element_screenshot?.startsWith("data:image/") && (
+                              {pin.has_screenshot && (
                                 <img
-                                  src={pin.element_screenshot}
+                                  src={screenshotUrl(pin.id)}
                                   alt="Element screenshot"
+                                  loading="lazy"
                                   className="h-12 w-16 object-cover rounded border"
                                 />
                               )}

@@ -1,18 +1,14 @@
 import { widgetOptions, widgetJson as json, widgetErr as err } from '../_cors.js';
 import {
   isUuid, isHttpUrl, isRequiredString, isOptionalString, isOptionalNumber, readJsonObject, scrubPageUrl,
+  normalizePageUrl, SCREENSHOT_RE,
 } from '../_validate.js';
 import { LIMITS, clientOf, hit, retryAfter } from '../_ratelimit.js';
+import { MAX_PINS_LISTED, MAX_PINS_PER_PROJECT, PIN_COLUMNS, coercePin } from '../_pins.js';
 
 // Widget caps screenshots at 200,000 chars; leave headroom for the rest of the body.
 const MAX_BODY_BYTES = 300_000;
 const MAX_SCREENSHOT_CHARS = 250_000;
-// The raster formats a canvas can export, base64-encoded. Nothing else (SVG in particular).
-const SCREENSHOT_RE = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
-
-function coercePin(row) {
-  return { ...row, resolved: row.resolved === 1 || row.resolved === true };
-}
 
 export function onRequestOptions() {
   return widgetOptions();
@@ -23,11 +19,21 @@ export async function onRequestGet({ request, env }) {
   const projectId = url.searchParams.get('project_id');
   if (!isUuid(projectId)) return err('project_id must be a UUID');
 
+  // The widget asks for the page it is on; the dashboard asks for everything.
+  const pageUrl = url.searchParams.get('page_url');
+  if (pageUrl !== null && !isHttpUrl(pageUrl)) return err('page_url must be an http(s) URL');
+
   try {
     const rows = await env.DB.prepare(
-      'SELECT * FROM pins WHERE project_id = ? ORDER BY created_at DESC'
-    ).bind(projectId).all();
-    return json({ pins: rows.results.map(coercePin) });
+      `SELECT ${PIN_COLUMNS} FROM pins WHERE project_id = ? ORDER BY created_at DESC LIMIT ?`
+    ).bind(projectId, MAX_PINS_LISTED + 1).all();
+    let pins = rows.results.slice(0, MAX_PINS_LISTED);
+    if (pageUrl !== null) {
+      // Compared in normalised form, so pins stored under an older spelling of the URL still match.
+      const wanted = normalizePageUrl(pageUrl);
+      pins = pins.filter((pin) => normalizePageUrl(pin.page_url) === wanted);
+    }
+    return json({ pins: pins.map(coercePin), has_more: rows.results.length > MAX_PINS_LISTED });
   } catch (e) {
     console.error('pins GET failed', e);
     return err('Database error', 500);
@@ -76,7 +82,6 @@ export async function onRequestPost({ request, env, waitUntil }) {
   const pin = {
     id, project_id, page_url, element_selector,
     element_text: element_text ?? null,
-    element_screenshot: element_screenshot ?? null,
     comment,
     author: author ?? null,
     browser: browser ?? null,
@@ -88,6 +93,11 @@ export async function onRequestPost({ request, env, waitUntil }) {
   };
 
   try {
+    const { n } = await env.DB.prepare('SELECT COUNT(*) AS n FROM pins WHERE project_id = ?').bind(project_id).first();
+    if (n >= MAX_PINS_PER_PROJECT) {
+      return err(`This project has reached its limit of ${MAX_PINS_PER_PROJECT} pins. Delete some in the dashboard to make room.`, 409);
+    }
+
     await env.DB.prepare(`
       INSERT INTO pins (
         id, project_id, page_url, element_selector, element_text,
@@ -96,7 +106,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       pin.id, pin.project_id, pin.page_url, pin.element_selector,
-      pin.element_text, pin.element_screenshot, pin.comment, pin.author,
+      pin.element_text, element_screenshot ?? null, pin.comment, pin.author,
       pin.browser, pin.viewport, pin.x_offset, pin.y_offset,
       pin.resolved, pin.created_at
     ).run();
@@ -110,7 +120,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
       }).catch((e) => console.error('ntfy notification failed', e)));
     }
 
-    return json({ pin: coercePin(pin) }, 201);
+    return json({ pin: coercePin({ ...pin, has_screenshot: element_screenshot != null }) }, 201);
   } catch (e) {
     if (e.message && e.message.includes('UNIQUE constraint')) return err('Pin already exists', 409);
     if (e.message && e.message.includes('FOREIGN KEY')) return err('Project not found', 404);

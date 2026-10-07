@@ -3,7 +3,7 @@ import { LIMITS, clientOf, hit } from '../../functions/api/_ratelimit.js';
 import { onRequestPost as verify } from '../../functions/api/auth/verify.js';
 import { onRequestPost as createPin } from '../../functions/api/pins/index.js';
 import { onRequestPatch as patchPin } from '../../functions/api/pins/[id].js';
-import { ADMIN_PASSWORD, PIN_ID, call, makeEnv, seedProject, uuid, validPin } from './helpers.js';
+import { ADMIN_PASSWORD, PIN_ID, PROJECT_ID, call, makeEnv, seedProject, uuid, validPin } from './helpers.js';
 
 const NOW = 1_800_000_000_000;
 const RULE = { limit: 3, windowMs: 60_000 };
@@ -160,7 +160,7 @@ describe('pin limits', () => {
   it('refuses a flood of resolve and reopen requests from one client', async () => {
     await call(createPin, { env, method: 'POST', body: validPin() });
     const patch = (resolved) =>
-      call(patchPin, { env, method: 'PATCH', params: { id: PIN_ID }, body: { resolved }, ip: '203.0.113.7' });
+      call(patchPin, { env, method: 'PATCH', params: { id: PIN_ID }, body: { resolved, project_id: PROJECT_ID }, ip: '203.0.113.7' });
     for (let i = 0; i < LIMITS.resolvePerClient.limit; i++) {
       expect((await patch(i % 2 === 0)).status).toBe(200);
     }

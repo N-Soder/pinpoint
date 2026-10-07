@@ -1,11 +1,8 @@
 import { widgetOptions, widgetJson, widgetErr, json, err } from '../_cors.js';
 import { isAdmin } from '../_auth.js';
-import { readJsonObject } from '../_validate.js';
+import { isUuid, readJsonObject } from '../_validate.js';
+import { PIN_COLUMNS, coercePin } from '../_pins.js';
 import { LIMITS, clientOf, hit, retryAfter } from '../_ratelimit.js';
-
-function coercePin(row) {
-  return { ...row, resolved: row.resolved === 1 || row.resolved === true };
-}
 
 export function onRequestOptions() {
   return widgetOptions();
@@ -22,11 +19,20 @@ export async function onRequestPatch({ request, env, params }) {
 
   if (typeof body.resolved !== 'boolean') return widgetErr('resolved (boolean) is required');
 
+  // A pin id alone is not enough: the widget must also name the pin's project,
+  // which is what it was given access to. The dashboard's admin session needs neither.
+  const admin = await isAdmin(request, env);
+  if (!admin && !isUuid(body.project_id)) return widgetErr('project_id must be a UUID');
+
   const resolvedInt = body.resolved ? 1 : 0;
   try {
-    const row = await env.DB.prepare(
-      'UPDATE pins SET resolved = ? WHERE id = ? RETURNING *'
-    ).bind(resolvedInt, id).first();
+    const row = admin
+      ? await env.DB.prepare(
+        `UPDATE pins SET resolved = ? WHERE id = ? RETURNING ${PIN_COLUMNS}`
+      ).bind(resolvedInt, id).first()
+      : await env.DB.prepare(
+        `UPDATE pins SET resolved = ? WHERE id = ? AND project_id = ? RETURNING ${PIN_COLUMNS}`
+      ).bind(resolvedInt, id, body.project_id).first();
 
     if (!row) return widgetErr('Not found', 404);
     return widgetJson({ pin: coercePin(row) });

@@ -29,7 +29,17 @@ describe('activation', () => {
   it('shows the Feedback button and asks its own host for the project\'s pins', async () => {
     const { requests, find } = await loadWidget();
     expect(find('btn').textContent).toContain('Feedback');
-    expect(requests).toEqual([{ url: `${HOST}/api/pins?project_id=${PROJECT_ID}`, method: 'GET', body: undefined }]);
+    expect(requests).toEqual([{
+      url: `${HOST}/api/pins?project_id=${PROJECT_ID}&page_url=${encodeURIComponent(`${SITE}/about`)}`,
+      method: 'GET',
+      body: undefined,
+    }]);
+  });
+
+  it('asks only for the page it is on, without review= or credentials in the URL', async () => {
+    const { requests } = await loadWidget({ pageUrl: `${SITE}/reset/?step=2&token=abc123&review=1` });
+    const asked = new URL(requests[0].url).searchParams.get('page_url');
+    expect(asked).toBe(`${SITE}/reset?step=2`);
   });
 });
 
@@ -78,7 +88,10 @@ describe('markers', () => {
     click(find('resolve-btn'));
     await settle();
 
-    expect(requests.at(-1)).toEqual({ url: `${HOST}/api/pins/${uuid(100)}`, method: 'PATCH', body: { resolved: true } });
+    // The pin's project goes along: the API does not act on a pin id alone.
+    expect(requests.at(-1)).toEqual({
+      url: `${HOST}/api/pins/${uuid(100)}`, method: 'PATCH', body: { resolved: true, project_id: PROJECT_ID },
+    });
     expect(findAll('marker')[0].classList.contains('resolved')).toBe(true);
   });
 
