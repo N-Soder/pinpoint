@@ -6,6 +6,11 @@
 # Admin dashboard password. Use a long, random value.
 ADMIN_PASSWORD=change-me-to-a-long-random-string
 
+# Recommended: a separate random secret (at least 32 characters) for signing
+# admin sessions, e.g. from `openssl rand -base64 48`. Without it the signing
+# key is derived from ADMIN_PASSWORD alone.
+# SESSION_SECRET=
+
 # Optional: ntfy.sh topic for push notifications when a pin is created.
 # ntfy topics are public to anyone who knows the name — treat it like a
 # password (long and random) and note that comments are sent in the clear.

@@ -73,6 +73,57 @@ describe('session tokens', () => {
   });
 });
 
+describe('session tokens with SESSION_SECRET', () => {
+  const NOW = 1_800_000_000_000;
+  const SESSION_SECRET = 'a-separate-signing-secret-of-32-chars-or-more';
+  const withSecret = { ADMIN_PASSWORD, SESSION_SECRET };
+
+  it('issues a token that verifies until it expires', async () => {
+    const { token, expires_at } = await createSession(withSecret, NOW);
+    expect(await verifySession(token, withSecret, NOW)).toBe(true);
+    expect(await verifySession(token, withSecret, expires_at)).toBe(false);
+  });
+
+  it('rejects a token signed from the password alone', async () => {
+    // What an attacker who guessed the password offline from a stolen token could forge.
+    const { token } = await createSession(env, NOW);
+    expect(await verifySession(token, withSecret, NOW)).toBe(false);
+  });
+
+  it('is not accepted once SESSION_SECRET is removed', async () => {
+    const { token } = await createSession(withSecret, NOW);
+    expect(await verifySession(token, env, NOW)).toBe(false);
+  });
+
+  it('rejects every session once SESSION_SECRET is rotated', async () => {
+    const { token } = await createSession(withSecret, NOW);
+    const rotated = { ADMIN_PASSWORD, SESSION_SECRET: 'another-signing-secret-of-32-chars-or-more!' };
+    expect(await verifySession(token, rotated, NOW)).toBe(false);
+  });
+
+  it('still rejects every session once the password is rotated', async () => {
+    const { token } = await createSession(withSecret, NOW);
+    expect(await verifySession(token, { ADMIN_PASSWORD: 'rotated', SESSION_SECRET }, NOW)).toBe(false);
+  });
+
+  it('does not contain either secret', async () => {
+    const { token } = await createSession(withSecret, NOW);
+    expect(token).not.toContain(ADMIN_PASSWORD);
+    expect(token).not.toContain(SESSION_SECRET);
+  });
+
+  it.each(['short', 'x'.repeat(31), 42])('fails closed when SESSION_SECRET is %p', async (bad) => {
+    const misconfigured = { ADMIN_PASSWORD, SESSION_SECRET: bad };
+    // Neither a password-only token nor one made with the bad secret may pass.
+    expect(await verifySession(ADMIN_TOKEN, misconfigured)).toBe(false);
+    await expect(createSession(misconfigured, NOW)).rejects.toThrow(/SESSION_SECRET/);
+  });
+
+  it.each([undefined, ''])('falls back to the password-derived key when SESSION_SECRET is %p', async (unset) => {
+    expect(await verifySession(ADMIN_TOKEN, { ADMIN_PASSWORD, SESSION_SECRET: unset })).toBe(true);
+  });
+});
+
 describe('isAdmin', () => {
   const req = (headers = {}) => new Request('https://pinpoint.test/api/projects', { headers });
   const cookie = (value) => ({ Cookie: `${SESSION_COOKIE}=${value}` });
@@ -148,6 +199,35 @@ describe('POST /api/auth/verify', () => {
     const res = await login({ rawBody });
     expect(res.status).toBe(400);
     expect(res.headers.get('Set-Cookie')).toBeNull();
+  });
+});
+
+describe('POST /api/auth/verify with SESSION_SECRET', () => {
+  const SESSION_SECRET = 'a-separate-signing-secret-of-32-chars-or-more';
+
+  it('signs the session with it', async () => {
+    const withSecret = makeEnv({ SESSION_SECRET });
+    const res = await call(verify, { env: withSecret, method: 'POST', body: { password: ADMIN_PASSWORD } });
+    expect(res.status).toBe(200);
+    const token = res.headers.get('Set-Cookie').split(';')[0].slice(SESSION_COOKIE.length + 1);
+    expect(await verifySession(token, withSecret)).toBe(true);
+    expect(await verifySession(token, env)).toBe(false);
+  });
+
+  it('refuses to sign in when it is too short, without saying why', async () => {
+    const res = await call(verify, {
+      env: makeEnv({ SESSION_SECRET: 'short' }), method: 'POST', body: { password: ADMIN_PASSWORD },
+    });
+    expect(res.status).toBe(500);
+    expect(res.headers.get('Set-Cookie')).toBeNull();
+    expect(JSON.stringify(res.data)).not.toContain('SESSION_SECRET');
+  });
+
+  it('still answers 401 for a wrong password when it is too short', async () => {
+    const res = await call(verify, {
+      env: makeEnv({ SESSION_SECRET: 'short' }), method: 'POST', body: { password: 'nope' },
+    });
+    expect(res.status).toBe(401);
   });
 });
 
