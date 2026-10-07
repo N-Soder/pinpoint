@@ -25,8 +25,8 @@
     try { return new URL(currentScript.src).origin; } catch (e) { return ''; }
   })();
 
-  // Only activate if ?review= is in the page URL
-  if (window.location.search.indexOf('review=') === -1) return;
+  // Only activate if the page URL has a review= parameter (not preview= and the like)
+  if (!/[?&]review=/.test(window.location.search)) return;
 
   // State
   var commentMode = false;
@@ -40,9 +40,22 @@
   // Styles namespace
   var NS = '__pinpoint_';
 
-  // UUID v4 — prefer the CSPRNG-backed native implementation
+  // UUID v4 from the browser's secure generator. randomUUID only exists on
+  // https pages; getRandomValues also works on plain-http staging sites.
   function generateUUID() {
-    if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+    var c = window.crypto || window.msCrypto;
+    if (c && typeof c.randomUUID === 'function') return c.randomUUID();
+    if (c && typeof c.getRandomValues === 'function') {
+      var bytes = c.getRandomValues(new Uint8Array(16));
+      bytes[6] = (bytes[6] & 0x0f) | 0x40;
+      bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      var hex = '';
+      for (var i = 0; i < 16; i++) {
+        hex += (bytes[i] + 0x100).toString(16).slice(1);
+        if (i === 3 || i === 5 || i === 7 || i === 9) hex += '-';
+      }
+      return hex;
+    }
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
       var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
       return v.toString(16);

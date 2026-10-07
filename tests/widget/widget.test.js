@@ -15,6 +15,17 @@ describe('activation', () => {
     expect(find('btn')).toBeNull();
   });
 
+  it.each(['?preview=1', '?no_review=1', '?q=review%3D1'])('does nothing for %s, which only resembles review=', async (search) => {
+    const { requests, find } = await loadWidget({ pageUrl: `${SITE}/about${search}` });
+    expect(requests).toEqual([]);
+    expect(find('btn')).toBeNull();
+  });
+
+  it.each(['?review=1', '?page=2&review=1', '?review='])('activates for %s', async (search) => {
+    const { find } = await loadWidget({ pageUrl: `${SITE}/about${search}` });
+    expect(find('btn')).not.toBeNull();
+  });
+
   it('shows the Feedback button and asks its own host for the project\'s pins', async () => {
     const { requests, find } = await loadWidget();
     expect(find('btn').textContent).toContain('Feedback');
@@ -101,6 +112,25 @@ describe('leaving a comment', () => {
     });
     expect(post.body.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(post.body.viewport).toMatch(/^\d+x\d+$/);
+  });
+
+  it('draws the pin id from the secure generator on plain-http pages, where randomUUID does not exist', async () => {
+    const ids = [];
+    for (let i = 0; i < 2; i++) {
+      const { requests, startComment } = await loadWidget({
+        pageUrl: 'http://staging.site.test/about?review=1',
+        setup: (window) => {
+          Object.defineProperty(window.crypto, 'randomUUID', { value: undefined, configurable: true });
+          window.Math.random = () => { throw new Error('Math.random must not be used for ids'); };
+        },
+      });
+      const form = await startComment('h1');
+      form.comment.value = 'Typo here';
+      await form.submit();
+      ids.push(requests.at(-1).body?.id);
+    }
+    expect(ids[0]).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(ids[1]).not.toBe(ids[0]);
   });
 
   it('sends the name only when one was typed', async () => {
