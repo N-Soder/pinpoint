@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchProjects, fetchPins, patchPin, deletePin, screenshotUrl, type PinList } from "@/lib/api";
 import { safeHttpUrl } from "@/lib/utils";
 import AppLayout from "@/components/AppLayout";
+import { ReviewLinkCard } from "@/components/ReviewLinkCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -187,9 +188,11 @@ const ProjectDashboard = () => {
             <code className="font-mono bg-muted px-1 py-0.5 rounded">&lt;/body&gt;</code> tag.
             Add{" "}
             <code className="font-mono bg-muted px-1 py-0.5 rounded">?review=1</code> to any page
-            URL to activate feedback mode.
+            URL to activate feedback mode, or use the review link below if this project requires one.
           </p>
         </div>
+
+        <ReviewLinkCard projectId={project.id} siteUrl={project.site_url} />
 
         {/* Pins */}
         <Tabs value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>

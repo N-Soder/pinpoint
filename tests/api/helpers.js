@@ -54,6 +54,7 @@ export async function call(handler, {
   token,
   origin,
   ip,
+  review,
   params = {},
   waitUntil = () => {},
 } = {}) {
@@ -62,6 +63,8 @@ export async function call(handler, {
   if (origin) headers.Origin = origin;
   // Cloudflare sets this on every request; the rate limiter keys on it.
   if (ip) headers['CF-Connecting-IP'] = ip;
+  // What the widget sends when the page was opened through a review link.
+  if (review) headers['X-Pinpoint-Review'] = review;
   const request = new Request(`https://pinpoint.test${path}`, {
     method,
     headers,

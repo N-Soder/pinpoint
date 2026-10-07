@@ -4,7 +4,7 @@
 export const WIDGET_CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, X-Pinpoint-Review',
 };
 
 // public/_headers does not apply to Functions, so set these here.

@@ -238,3 +238,65 @@ describe('page URL sent with a comment', () => {
     expect(findAll('marker')).toHaveLength(2);
   });
 });
+
+describe('review links', () => {
+  const TOKEN = 'k3J9xQ2mVb7ZpL0aYtR5uWc8NdE1hG4s';
+
+  it('sends the token from ?review= with every request', async () => {
+    const { headers, requests, findAll, find, click, startComment } = await loadWidget({
+      pageUrl: `${SITE}/about?review=${TOKEN}`,
+      pins: [pin()],
+    });
+    const form = await startComment('p');
+    form.comment.value = 'Feedback';
+    await form.submit();
+    click(findAll('marker')[0]);
+    click(find('resolve-btn'));
+    await settle();
+
+    expect(requests.map((r) => r.method)).toEqual(['GET', 'POST', 'PATCH']);
+    for (const sent of headers) expect(sent['X-Pinpoint-Review']).toBe(TOKEN);
+  });
+
+  it('keeps the token out of the page URL it stores and asks for', async () => {
+    const { requests, startComment } = await loadWidget({ pageUrl: `${SITE}/about?review=${TOKEN}` });
+    const form = await startComment('h1');
+    form.comment.value = 'Feedback';
+    await form.submit();
+    expect(JSON.stringify(requests.map((r) => [r.url.split('/api/')[1], r.body]))).not.toContain(TOKEN);
+    expect(requests.at(-1).body.page_url).toBe(`${SITE}/about`);
+  });
+
+  it.each(['1', 'true', ''])('sends no token header for an ordinary ?review=%s', async (value) => {
+    const { headers } = await loadWidget({ pageUrl: `${SITE}/about?review=${value}` });
+    expect(headers[0]).not.toHaveProperty('X-Pinpoint-Review');
+  });
+
+  it('shows nothing when the project needs a review link and the page was not opened with one', async () => {
+    const { requests, find, findAll } = await loadWidget({ status: 401, pins: [pin()] });
+    expect(find('btn')).toBeNull();
+    expect(find('toast')).toBeNull();
+    expect(findAll('marker')).toEqual([]);
+    expect(requests).toHaveLength(1);
+  });
+
+  it('keeps the Feedback button hidden until the API has answered', async () => {
+    const { find } = await loadWidget({
+      setup: (window) => {
+        window.fetch = () => new Promise(() => {});
+      },
+    });
+    expect(find('btn').style.display).toBe('none');
+  });
+
+  it('shows the Feedback button once the API has answered', async () => {
+    const { find } = await loadWidget();
+    expect(find('btn').style.display).toBe('');
+  });
+
+  it('still shows the Feedback button when the pins could not be fetched for another reason', async () => {
+    const { find } = await loadWidget({ status: 500 });
+    expect(find('btn').style.display).toBe('');
+  });
+});
+

@@ -154,6 +154,37 @@ export async function fetchPins(projectId: string): Promise<PinList> {
   return { pins: data.pins, hasMore: data.has_more === true };
 }
 
+// ── Review links ─────────────────────────────────────────────────────────────
+
+const reviewLinkPath = (projectId: string) => `/api/review-links/${encodeURIComponent(projectId)}`;
+
+/** The project's review link token, or null when anyone with the project ID can use it. */
+export async function fetchReviewToken(projectId: string): Promise<string | null> {
+  const data = await apiFetch<{ review_token: string | null }>(reviewLinkPath(projectId));
+  return data.review_token;
+}
+
+/** Require a review link, or replace the current one. Returns the new token. */
+export async function createReviewToken(projectId: string): Promise<string> {
+  const data = await apiFetch<{ review_token: string }>(reviewLinkPath(projectId), { method: 'PUT' });
+  return data.review_token;
+}
+
+export async function deleteReviewToken(projectId: string): Promise<void> {
+  await apiFetch(reviewLinkPath(projectId), { method: 'DELETE' });
+}
+
+/** The link reviewers open: the project's site with the token as ?review=. Null if the site URL is unusable. */
+export function reviewLinkFor(siteUrl: string, token: string): string | null {
+  try {
+    const url = new URL(siteUrl);
+    url.searchParams.set('review', token);
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 /** Where the dashboard loads a pin's screenshot from. Admin only. */
 export function screenshotUrl(pinId: string): string {
   return `/api/screenshots/${encodeURIComponent(pinId)}`;

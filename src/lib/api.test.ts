@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  screenshotUrl,
+  screenshotUrl, fetchReviewToken, createReviewToken, deleteReviewToken, reviewLinkFor,
   checkSession, clearLegacyToken, createProject, deletePin, deleteProject, fetchContactEmail, fetchPins,
   fetchProjects, fetchProjectsWithCounts, patchPin, setUnauthorizedHandler, signOut, verifyPassword,
 } from './api';
@@ -177,5 +177,33 @@ describe('dashboard API client', () => {
 
   it('points screenshots at the admin-only endpoint', () => {
     expect(screenshotUrl('a/b')).toBe('/api/screenshots/a%2Fb');
+  });
+
+  it('reads, creates and removes a project\'s review link token', async () => {
+    fetchMock.mockImplementation(async () => new Response(JSON.stringify({ review_token: 'tok' })));
+    expect(await fetchReviewToken('p 1')).toBe('tok');
+    expect(await createReviewToken('p 1')).toBe('tok');
+    fetchMock.mockImplementation(async () => new Response(JSON.stringify({ ok: true })));
+    await deleteReviewToken('p 1');
+    expect(fetchMock.mock.calls.map(([url, options]) => [url, options?.method ?? 'GET'])).toEqual([
+      ['/api/review-links/p%201', 'GET'],
+      ['/api/review-links/p%201', 'PUT'],
+      ['/api/review-links/p%201', 'DELETE'],
+    ]);
+  });
+
+  it('reports no review link as null', async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ review_token: null })));
+    expect(await fetchReviewToken('p1')).toBeNull();
+  });
+
+  it.each([
+    ['https://example.com', 'https://example.com/?review=tok'],
+    ['https://example.com/staging/', 'https://example.com/staging/?review=tok'],
+    ['https://example.com/?lang=en', 'https://example.com/?lang=en&review=tok'],
+    ['https://example.com/?review=1', 'https://example.com/?review=tok'],
+    ['not a url', null],
+  ])('builds the review link for %s', (siteUrl, expected) => {
+    expect(reviewLinkFor(siteUrl, 'tok')).toBe(expected);
   });
 });

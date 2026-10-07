@@ -150,6 +150,11 @@ describe('POST /api/pins', () => {
     fetchMock.mockRestore();
   });
 
+  it('never stores a review link token left in the page URL', async () => {
+    const res = await post(validPin({ page_url: 'https://example.com/about?review=k3J9xQ2mVb7ZpL0aYtR5uWc8NdE1hG4s&page=2' }));
+    expect(res.data.pin.page_url).toBe('https://example.com/about?page=2');
+  });
+
   it('URL-encodes the ntfy topic', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('ok'));
     env.NTFY_TOPIC = 'a/b?c';

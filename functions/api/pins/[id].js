@@ -2,6 +2,7 @@ import { widgetOptions, widgetJson, widgetErr, json, err } from '../_cors.js';
 import { isAdmin } from '../_auth.js';
 import { isUuid, readJsonObject } from '../_validate.js';
 import { PIN_COLUMNS, coercePin } from '../_pins.js';
+import { mayUseProject, REVIEW_LINK_REQUIRED } from '../_review.js';
 import { LIMITS, clientOf, hit, retryAfter } from '../_ratelimit.js';
 
 export function onRequestOptions() {
@@ -26,6 +27,9 @@ export async function onRequestPatch({ request, env, params }) {
 
   const resolvedInt = body.resolved ? 1 : 0;
   try {
+    // The update below only touches a pin in the named project, so checking that project's link is enough.
+    if (!admin && !(await mayUseProject(request, env, body.project_id))) return widgetErr(REVIEW_LINK_REQUIRED, 401);
+
     const row = admin
       ? await env.DB.prepare(
         `UPDATE pins SET resolved = ? WHERE id = ? RETURNING ${PIN_COLUMNS}`
