@@ -54,6 +54,20 @@ export interface Pin {
   created_at: number;
 }
 
+// ── Site ─────────────────────────────────────────────────────────────────────
+
+/** The instance owner's contact address for the landing page, or null if none is configured. */
+export async function fetchContactEmail(): Promise<string | null> {
+  try {
+    const res = await fetch('/api/site');
+    if (!res.ok) return null;
+    const body = (await res.json()) as { contact_email?: string | null };
+    return body.contact_email ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 /** Sign in. On success the API sets the session cookie. */

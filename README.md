@@ -58,6 +58,7 @@ For frontend-only work with hot reload, run `npm run dev` (port 8080) alongside 
 4. Set the secrets:
    - `npx wrangler pages secret put ADMIN_PASSWORD` (required; use a long random value)
    - `npx wrangler pages secret put NTFY_TOPIC` (optional; sends [ntfy.sh](https://ntfy.sh) push notifications for new pins)
+   - `npx wrangler pages secret put CONTACT_EMAIL` (optional; shows a contact address on the landing page)
 5. **Strongly recommended:** add a Cloudflare [rate limiting rule](https://developers.cloudflare.com/waf/rate-limiting-rules/) for `POST /api/auth/verify` and `POST /api/pins`. The app has no built-in rate limiting.
 
 ## Configuration
@@ -66,6 +67,7 @@ For frontend-only work with hot reload, run `npm run dev` (port 8080) alongside 
 |------|-------|----------|-------------|
 | `ADMIN_PASSWORD` | Pages secret / `.dev.vars` | yes | Shared password for the admin dashboard. If it is unset, all admin requests are denied. |
 | `NTFY_TOPIC` | Pages secret / `.dev.vars` | no | ntfy.sh topic name. Anyone who knows a topic name can read it, so use a long random name. |
+| `CONTACT_EMAIL` | Pages secret / `.dev.vars` | no | Address shown on the landing page for people who want to try your instance. The section is hidden when unset. |
 | `DB` | `wrangler.toml` | yes | D1 binding |
 
 ## Widget

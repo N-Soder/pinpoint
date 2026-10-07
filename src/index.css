@@ -42,6 +42,9 @@
   --color-sidebar-ring: hsl(var(--sidebar-ring));
   --color-sidebar-muted: hsl(var(--sidebar-muted));
 
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-code: 'JetBrains Mono', ui-monospace, monospace;
+
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);

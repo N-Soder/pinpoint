@@ -10,3 +10,7 @@ ADMIN_PASSWORD=change-me-to-a-long-random-string
 # ntfy topics are public to anyone who knows the name — treat it like a
 # password (long and random) and note that comments are sent in the clear.
 # NTFY_TOPIC=
+
+# Optional: an address shown on the landing page ("Try it before you host it").
+# Leave unset to hide that section.
+# CONTACT_EMAIL=
