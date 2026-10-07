@@ -10,6 +10,7 @@ export default defineConfig({
       "src/**/*.{test,spec}.{ts,tsx}",
       "test/**/*.{test,spec}.{js,ts}",
       "tests/api/**/*.test.js",
+      "tests/widget/**/*.test.js",
     ],
   },
   resolve: {
