@@ -6,6 +6,7 @@ import * as project from '../../functions/api/projects/[id].js';
 import * as verify from '../../functions/api/auth/verify.js';
 import * as session from '../../functions/api/auth/session.js';
 import * as site from '../../functions/api/site.js';
+import * as reviewLink from '../../functions/api/review-links/[id].js';
 import { ADMIN_PASSWORD, ADMIN_TOKEN, PIN_ID, PROJECT_ID, call, makeEnv, seedProject, uuid, validPin } from './helpers.js';
 
 const ALLOW_ORIGIN = 'Access-Control-Allow-Origin';
@@ -50,6 +51,11 @@ const sameOriginCalls = {
   'GET /api/auth/session': () => call(session.onRequestGet, { env, token: ADMIN_TOKEN }),
   'DELETE /api/auth/session': () => call(session.onRequestDelete, { env, method: 'DELETE', token: ADMIN_TOKEN }),
   'GET /api/site': () => call(site.onRequestGet, { env }),
+  'GET /api/review-links/:id': () => call(reviewLink.onRequestGet, { env, token: ADMIN_TOKEN, params: { id: PROJECT_ID } }),
+  'PUT /api/review-links/:id': () =>
+    call(reviewLink.onRequestPut, { env, method: 'PUT', token: ADMIN_TOKEN, params: { id: PROJECT_ID } }),
+  'DELETE /api/review-links/:id (unauthorised)': () =>
+    call(reviewLink.onRequestDelete, { env, method: 'DELETE', params: { id: PROJECT_ID } }),
 };
 
 describe('CORS', () => {
@@ -68,12 +74,13 @@ describe('CORS', () => {
     expect(res.status).toBe(204);
     expect(res.headers.get(ALLOW_ORIGIN)).toBe('*');
     expect(res.headers.get('Access-Control-Allow-Methods')).toBe('GET, POST, PATCH, OPTIONS');
-    expect(res.headers.get('Access-Control-Allow-Headers')).toBe('Content-Type');
+    expect(res.headers.get('Access-Control-Allow-Headers')).toBe('Content-Type, X-Pinpoint-Review');
   });
 
   it.each([
     ['/api/projects', projects], ['/api/projects/:id', project],
     ['/api/auth/verify', verify], ['/api/auth/session', session], ['/api/site', site],
+    ['/api/review-links/:id', reviewLink],
   ])('preflight for %s grants nothing', (_path, route) => {
     const res = route.onRequestOptions();
     expect(res.status).toBe(204);

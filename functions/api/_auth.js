@@ -23,6 +23,12 @@ function digestsEqual(a, b) {
   return diff === 0;
 }
 
+/** Compares two secrets without revealing, through timing, where they differ. */
+export async function secretsEqual(a, b) {
+  const [x, y] = await Promise.all([sha256(a), sha256(b)]);
+  return digestsEqual(x, y);
+}
+
 /**
  * Returns true only when `candidate` matches env.ADMIN_PASSWORD.
  * Fails closed when the secret is missing or the candidate is invalid.
@@ -31,8 +37,7 @@ export async function verifyAdminSecret(candidate, env) {
   const secret = env.ADMIN_PASSWORD;
   if (typeof secret !== 'string' || secret.length === 0) return false;
   if (typeof candidate !== 'string' || candidate.length === 0) return false;
-  const [a, b] = await Promise.all([sha256(candidate), sha256(secret)]);
-  return digestsEqual(a, b);
+  return secretsEqual(candidate, secret);
 }
 
 // ── Sessions ─────────────────────────────────────────────────────────────────

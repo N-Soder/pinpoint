@@ -26,6 +26,15 @@ CREATE TABLE IF NOT EXISTS pins (
   created_at          INTEGER NOT NULL             -- Unix ms
 );
 
+-- Projects that require a review link (functions/api/_review.js). A row means
+-- the project's pins are only available with this token or to an admin; no
+-- row means the project ID alone is enough.
+CREATE TABLE IF NOT EXISTS review_tokens (
+  project_id  TEXT    NOT NULL PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+  token       TEXT    NOT NULL,
+  created_at  INTEGER NOT NULL               -- Unix ms
+);
+
 -- Counters for the built-in rate limiter (functions/api/_ratelimit.js).
 -- A key is a limit name plus a keyed hash of what it counts (a client address
 -- or a project); no address is stored. Rows are swept after a day.

@@ -42,6 +42,8 @@ export async function loadWidget({
   scriptSrc = `${HOST}/widget.js?project=${PROJECT_ID}`,
   body = '<main><h1 id="title">Hello</h1><p>One</p><p>Two</p></main>',
   pins = [],
+  // HTTP status the API answers every request with.
+  status = 200,
   setup = () => {},
 } = {}) {
   const dom = new JSDOM(
@@ -50,13 +52,16 @@ export async function loadWidget({
   );
   const { window } = dom;
   const requests = [];
+  // Request headers, in step with `requests`.
+  const headers = [];
   window.fetch = (url, options = {}) => {
     requests.push({
       url: String(url),
       method: options.method || 'GET',
       body: options.body ? JSON.parse(options.body) : undefined,
     });
-    return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ pins }) });
+    headers.push(options.headers || {});
+    return Promise.resolve({ ok: status < 400, status, json: () => Promise.resolve({ pins }) });
   };
   setup(window);
   window.eval(SOURCE);
@@ -88,5 +93,5 @@ export async function loadWidget({
     };
   }
 
-  return { window, document, requests, find, findAll, click, startComment };
+  return { window, document, requests, headers, find, findAll, click, startComment };
 }

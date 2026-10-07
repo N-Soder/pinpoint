@@ -8,6 +8,8 @@ Pinpoint lets reviewers leave pinned, in-context comments directly on any page o
 2. **Embed the widget**: paste the generated `<script>` tag into your site.
 3. **Activate review mode**: append `?review=1` to any page URL.
 4. **Leave feedback**: click **💬 Feedback**, then click any element to pin a comment.
+
+   To keep feedback private, turn on **Require a review link** for the project and share that link instead; see [Security model](#security-model).
 5. **Review and resolve** pins in the dashboard, grouped by page and filterable by status.
 
 ## Tech stack
@@ -80,14 +82,18 @@ When you update an existing deployment, run `npm run db:migrate:remote` before `
 <script src="https://your-pinpoint-host/widget.js?project=PROJECT_ID"></script>
 ```
 
-The widget does nothing unless the page URL has a `review=` parameter and the script `src` contains `project=`. In review mode, existing pins for the page appear as numbered markers (red for open, grey for resolved). Clicking a marker shows the comment and lets the reviewer resolve it.
+The widget does nothing unless the page URL has a `review=` parameter and the script `src` contains `project=`. If the project requires a review link, it also does nothing unless `review=` holds that project's token. In review mode, existing pins for the page appear as numbered markers (red for open, grey for resolved). Clicking a marker shows the comment and lets the reviewer resolve it.
 
 ## Security model
 
 Read this before you deploy:
 
 - **The admin dashboard** uses a single shared password, checked server-side against `ADMIN_PASSWORD`. Signing in sets a signed session cookie that lasts 7 days. The cookie is `HttpOnly`, so page scripts cannot read it, and the password itself is never stored in the browser. Sessions are stateless: signing out clears the cookie, and changing `ADMIN_PASSWORD` or `SESSION_SECRET` ends every session. Set `SESSION_SECRET`: without it the session key is derived from the password alone, so anyone who obtains a session cookie can test password guesses against it offline. Either way, use a unique, long random password.
-- **Widget endpoints are anonymous by design.** Anyone who knows a project ID can list that project's pins (comments and author names), add pins, and mark that project's pins resolved or open. Screenshots are the exception: they are only served to a signed-in admin. A project accepts up to 1,000 pins; after that, new ones are refused until some are deleted. The project ID is in the embed snippet, so **anyone who can see your site's HTML can read its feedback.** Only embed the widget where that is acceptable, for example on staging sites, or add the snippet only for reviewers. Each pin stores the page URL including its query string and `#fragment`. Parameters that look like credentials (names such as `token`, `code`, `key` or `signature`, and values shaped like a signed token) are removed, along with `review=`, by the widget before sending and again by the API. This goes by name, so it cannot catch a token in the path or under an unusual name: avoid leaving feedback on pages such as password-reset or magic links.
+- **Widget endpoints are anonymous by default.** Anyone who knows a project ID can list that project's pins (comments and author names), add pins, and mark that project's pins resolved or open. Screenshots are the exception: they are only served to a signed-in admin. A project accepts up to 1,000 pins; after that, new ones are refused until some are deleted. The project ID is in the embed snippet, so **anyone who can see your site's HTML can read its feedback.** Only embed the widget where that is acceptable, for example on staging sites, or add the snippet only for reviewers, or require a review link (next point). Each pin stores the page URL including its query string and `#fragment`. Parameters that look like credentials (names such as `token`, `code`, `key` or `signature`, and values shaped like a signed token) are removed, along with `review=`, by the widget before sending and again by the API. This goes by name, so it cannot catch a token in the path or under an unusual name: avoid leaving feedback on pages such as password-reset or magic links.
+- **A project can require a review link.** Turn it on per project in the dashboard. The project's pins can then only be listed, added or resolved by requests carrying the project's token, which reviewers get as `?review=<token>` on the page URL, or by a signed-in admin. The token is not in the embed snippet or anywhere in your site's HTML, and the embed snippet does not change. Without it the widget shows nothing. Things to know:
+  - The token is part of the page URL while reviewing, so it is in the reviewer's browser history and in your site's own access logs. Treat the link like a password and replace it from the dashboard when a review round ends; the old link stops working at once.
+  - It is stored as-is in the database so the dashboard can show it again. It protects nothing except pins held in that same database.
+  - Projects that have not turned it on work exactly as before.
 - **Rate limits are built in**, counted in the database so they apply on every hostname:
   - sign-in: 10 attempts per client per 15 minutes, and 100 in total. While the total is reached nobody can sign in, though existing sessions keep working; that is the price of a limit that guessing from many addresses cannot get around.
   - new pins: 60 per client per 10 minutes, and 300 per project per hour.
@@ -100,7 +106,7 @@ See [SECURITY.md](SECURITY.md) to report a vulnerability.
 
 ## Database schema
 
-See [`db/schema.sql`](db/schema.sql). `projects` holds the ID, name, site URL and creation time. `pins` holds each comment, its CSS selector, element text, screenshot, author, browser, viewport, click offsets, resolved flag and creation time. Pins are deleted along with their project. `rate_limits` holds the short-lived counters behind the built-in rate limits.
+See [`db/schema.sql`](db/schema.sql). `projects` holds the ID, name, site URL and creation time. `pins` holds each comment, its CSS selector, element text, screenshot, author, browser, viewport, click offsets, resolved flag and creation time. Pins are deleted along with their project. `review_tokens` holds the token of each project that requires a review link. `rate_limits` holds the short-lived counters behind the built-in rate limits.
 
 ## Contributing
 

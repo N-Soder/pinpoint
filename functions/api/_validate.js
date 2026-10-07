@@ -31,7 +31,7 @@ export function isHttpUrl(value, maxLength = 2048) {
 // tests/page-url-cases.js runs one table of cases against both.
 
 const CREDENTIAL_NAMES = new Set([
-  'key', 'code', 'auth', 'sig', 'otp', 'sid', 'pass', 'session', 'sessionid', 'phpsessid',
+  'review', 'key', 'code', 'auth', 'sig', 'otp', 'sid', 'pass', 'session', 'sessionid', 'phpsessid',
   'jsessionid', 'authcode', 'authorization', 'accesskey', 'privatekey', 'authkey',
 ]);
 const CREDENTIAL_NAME_PARTS = ['token', 'secret', 'passw', 'pwd', 'signature', 'credential', 'apikey', 'jwt'];

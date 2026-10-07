@@ -18,7 +18,7 @@ We aim to acknowledge reports within a week. This is a small volunteer project, 
 
 The following are intentional trade-offs, documented in the README. They are not vulnerabilities in themselves:
 
-- Widget endpoints (`GET /api/pins`, `POST /api/pins`, `PATCH /api/pins/:id`) need no authentication. A project ID gives read and write access to that project's pins, apart from screenshots, which need an admin session.
+- Widget endpoints (`GET /api/pins`, `POST /api/pins`, `PATCH /api/pins/:id`) need no authentication by default. A project ID gives read and write access to that project's pins, apart from screenshots, which need an admin session. A project can instead require a review link, whose token then gives that access; the token travels in the page URL.
 - The admin dashboard uses a single shared password. Sessions are stateless signed cookies, so one cannot be revoked on its own before it expires; changing the password or `SESSION_SECRET` ends them all. Without `SESSION_SECRET` the signing key is derived from the password alone.
 - Rate limits are fixed windows per client address (IPv4 address or IPv6 /64), per project and overall. They slow abuse down; they do not stop someone with many addresses from adding pins up to the per-project limit, or from using up the overall sign-in allowance so that nobody can sign in for a while.
 

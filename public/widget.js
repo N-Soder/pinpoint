@@ -28,6 +28,15 @@
   // Only activate if the page URL has a review= parameter (not preview= and the like)
   if (!/[?&]review=/.test(window.location.search)) return;
 
+  // A project can require a review link: ?review=<token> rather than ?review=1.
+  // The token is passed on with every API call; anything shorter is an ordinary link.
+  var REVIEW_TOKEN = (function () {
+    var match = window.location.search.match(/[?&]review=([^&#]*)/);
+    var value = match ? match[1] : '';
+    try { value = decodeURIComponent(value); } catch (e) {}
+    return /^[A-Za-z0-9_-]{20,}$/.test(value) ? value : null;
+  }());
+
   // State
   var commentMode = false;
   var hoveredEl = null;
@@ -108,7 +117,7 @@
   // They are removed before a URL is sent or compared, by parameter name plus
   // values shaped like a signed token. functions/api/_validate.js does the
   // same on arrival; tests/page-url-cases.js runs one table against both.
-  var CREDENTIAL_NAMES = ['key', 'code', 'auth', 'sig', 'otp', 'sid', 'pass', 'session', 'sessionid', 'phpsessid',
+  var CREDENTIAL_NAMES = ['review', 'key', 'code', 'auth', 'sig', 'otp', 'sid', 'pass', 'session', 'sessionid', 'phpsessid',
     'jsessionid', 'authcode', 'authorization', 'accesskey', 'privatekey', 'authkey'];
   var CREDENTIAL_NAME_PARTS = ['token', 'secret', 'passw', 'pwd', 'signature', 'credential', 'apikey', 'jwt'];
   var SIGNED_TOKEN_RE = /^eyJ[\w-]+\.[\w-]+\.[\w-]*$/;
@@ -164,10 +173,17 @@
 
   // ── REST API helpers ──────────────────────────────────────────────────────
 
+  function apiHeaders(hasBody) {
+    var headers = {};
+    if (hasBody) headers['Content-Type'] = 'application/json';
+    if (REVIEW_TOKEN) headers['X-Pinpoint-Review'] = REVIEW_TOKEN;
+    return headers;
+  }
+
   function pinpointPost(path, body) {
     return fetch(PROXY_BASE + path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders(true),
       body: JSON.stringify(body)
     });
   }
@@ -175,13 +191,13 @@
   function pinpointPatch(path, body) {
     return fetch(PROXY_BASE + path, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders(true),
       body: JSON.stringify(body)
     });
   }
 
   function pinpointGet(path) {
-    return fetch(PROXY_BASE + path);
+    return fetch(PROXY_BASE + path, { headers: apiHeaders(false) });
   }
 
   // Inject global styles
@@ -219,10 +235,12 @@
   ].join('\n');
   document.head.appendChild(styleEl);
 
-  // Feedback button
+  // Feedback button. Hidden until the API has answered, because a project that
+  // requires a review link shows nothing at all to a page opened without one.
   var btn = document.createElement('button');
   btn.className = NS + 'btn';
   btn.textContent = '\ud83d\udcac Feedback';
+  btn.style.display = 'none';
   document.body.appendChild(btn);
 
   // Toast
@@ -246,6 +264,19 @@
       closePopup();
     }
   });
+
+  function showButton() {
+    btn.style.display = '';
+  }
+
+  // The project needs a review link and this page was opened without a valid one
+  function deactivate() {
+    commentMode = false;
+    removeHighlight();
+    closePopup();
+    btn.remove();
+    toastEl.remove();
+  }
 
   function removeHighlight() {
     if (hoveredEl) {
@@ -423,6 +454,11 @@
     pinpointGet('/api/pins?project_id=' + encodeURIComponent(PROJECT_ID)
         + '&page_url=' + encodeURIComponent(currentNorm))
       .then(function (res) {
+        if (res.status === 401) {
+          deactivate();
+          return;
+        }
+        showButton();
         if (!res.ok) {
           console.warn('[Pinpoint] Failed to fetch pins:', res.status);
           return;
@@ -437,6 +473,7 @@
           console.warn('[Pinpoint] Failed to parse pins response:', err);
         });
       }).catch(function (err) {
+        showButton();
         console.warn('[Pinpoint] Network error fetching pins:', err);
       });
   }

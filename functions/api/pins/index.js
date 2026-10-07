@@ -5,6 +5,7 @@ import {
 } from '../_validate.js';
 import { LIMITS, clientOf, hit, retryAfter } from '../_ratelimit.js';
 import { MAX_PINS_LISTED, MAX_PINS_PER_PROJECT, PIN_COLUMNS, coercePin } from '../_pins.js';
+import { mayUseProject, REVIEW_LINK_REQUIRED } from '../_review.js';
 
 // Widget caps screenshots at 200,000 chars; leave headroom for the rest of the body.
 const MAX_BODY_BYTES = 300_000;
@@ -24,6 +25,8 @@ export async function onRequestGet({ request, env }) {
   if (pageUrl !== null && !isHttpUrl(pageUrl)) return err('page_url must be an http(s) URL');
 
   try {
+    if (!(await mayUseProject(request, env, projectId))) return err(REVIEW_LINK_REQUIRED, 401);
+
     const rows = await env.DB.prepare(
       `SELECT ${PIN_COLUMNS} FROM pins WHERE project_id = ? ORDER BY created_at DESC LIMIT ?`
     ).bind(projectId, MAX_PINS_LISTED + 1).all();
@@ -73,6 +76,13 @@ export async function onRequestPost({ request, env, waitUntil }) {
       SCREENSHOT_RE.test(element_screenshot))
   ) {
     return err('element_screenshot must be a base64 JPEG, PNG or WebP data URL under the size limit');
+  }
+
+  try {
+    if (!(await mayUseProject(request, env, project_id))) return err(REVIEW_LINK_REQUIRED, 401);
+  } catch (e) {
+    console.error('pins POST failed', e);
+    return err('Database error', 500);
   }
 
   const perProject = await hit(env, 'pins-project', project_id.toLowerCase(), LIMITS.pinsPerProject);
