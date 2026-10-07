@@ -1,11 +1,13 @@
 import { widgetOptions, widgetJson as json, widgetErr as err } from '../_cors.js';
 import {
-  isUuid, isHttpUrl, isRequiredString, isOptionalString, isOptionalNumber, readJsonObject,
+  isUuid, isHttpUrl, isRequiredString, isOptionalString, isOptionalNumber, readJsonObject, scrubPageUrl,
 } from '../_validate.js';
 
 // Widget caps screenshots at 200,000 chars; leave headroom for the rest of the body.
 const MAX_BODY_BYTES = 300_000;
 const MAX_SCREENSHOT_CHARS = 250_000;
+// The raster formats a canvas can export, base64-encoded. Nothing else (SVG in particular).
+const SCREENSHOT_RE = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
 
 function coercePin(row) {
   return { ...row, resolved: row.resolved === 1 || row.resolved === true };
@@ -36,7 +38,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
   if (!body) return err('Invalid or oversized JSON body');
 
   const {
-    id, project_id, page_url, element_selector, comment,
+    id, project_id, element_selector, comment,
     element_text, element_screenshot, author, browser, viewport,
     x_offset, y_offset,
   } = body;
@@ -44,7 +46,8 @@ export async function onRequestPost({ request, env, waitUntil }) {
   if (!isUuid(id) || !isUuid(project_id)) return err('id and project_id must be UUIDs');
   // page_url is rendered as a link in the admin dashboard — only accept
   // real http(s) URLs so javascript:/data: schemes can never be stored.
-  if (!isHttpUrl(page_url)) return err('page_url must be an http(s) URL');
+  if (!isHttpUrl(body.page_url)) return err('page_url must be an http(s) URL');
+  const page_url = scrubPageUrl(body.page_url);
   if (!isRequiredString(element_selector, 2000)) return err('element_selector is required (max 2000 chars)');
   if (!isRequiredString(comment, 5000)) return err('comment is required (max 5000 chars)');
   if (!isOptionalString(element_text, 500)) return err('element_text is too long');
@@ -56,10 +59,10 @@ export async function onRequestPost({ request, env, waitUntil }) {
   if (
     element_screenshot != null &&
     !(typeof element_screenshot === 'string' &&
-      element_screenshot.startsWith('data:image/') &&
-      element_screenshot.length <= MAX_SCREENSHOT_CHARS)
+      element_screenshot.length <= MAX_SCREENSHOT_CHARS &&
+      SCREENSHOT_RE.test(element_screenshot))
   ) {
-    return err('element_screenshot must be a data:image/* URL under the size limit');
+    return err('element_screenshot must be a base64 JPEG, PNG or WebP data URL under the size limit');
   }
 
   // New pins always start open, timestamped by the server.
